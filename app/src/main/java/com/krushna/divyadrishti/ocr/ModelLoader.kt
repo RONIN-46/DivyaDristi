@@ -12,10 +12,10 @@ class ModelLoader(
         try {
 
             val detFiles =
-                context.assets.list("paddleocr/det")
+                context.assets.list("models/paddleocr/det")
 
             val recFiles =
-                context.assets.list("paddleocr/rec_en")
+                context.assets.list("models/paddleocr/rec_en")
 
             Log.d(
                 "OCR",
