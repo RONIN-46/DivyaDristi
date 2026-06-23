@@ -30,6 +30,8 @@ import kotlin.concurrent.thread
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
+import android.widget.Button
+import android.widget.TextView
 
 data class ObjectDetection(val label: String, val xCenterNorm: Float)
 private data class Detection(val box: BoundingBox, val label: String, val confidence: Float)
@@ -44,6 +46,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var connectButton: Button
     private lateinit var modeToggleButton: Button
     private lateinit var captureButton: Button
+    private lateinit var ocrButton: Button
+    private lateinit var ocrResultText: TextView
     private lateinit var statusText: TextView
     private lateinit var currencyToggleButton: Switch
     private lateinit var tts: TextToSpeech
@@ -90,6 +94,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         connectButton = findViewById(R.id.connectButton)
         modeToggleButton = findViewById(R.id.modeToggleButton)
         captureButton = findViewById(R.id.captureButton)
+        ocrButton = findViewById(R.id.ocrButton)
+        ocrResultText = findViewById(R.id.ocrResultText)
         statusText = findViewById(R.id.statusText)
         currencyToggleButton = findViewById(R.id.currencyToggleButton)
         connectionStatus = findViewById(R.id.connectionStatus)
@@ -141,6 +147,27 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 processAndSpeak(bitmap)
             } else {
                 Toast.makeText(this, "No image available to process", Toast.LENGTH_SHORT).show()
+            }
+        }
+        ocrButton.setOnClickListener {
+
+            val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
+
+            if (bitmap != null) {
+
+                val result = runOCR(bitmap)
+
+                ocrResultText.text = result
+
+                speakText(result)
+
+            } else {
+
+                Toast.makeText(
+                    this,
+                    "No image captured",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
@@ -278,6 +305,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
         }
+    }
+
+    private fun runOCR(bitmap: Bitmap): String {
+
+        return "OCR Module Not Connected Yet"
+
     }
 
 
@@ -527,7 +560,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun speakText(text: String) {
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "")
     }
-
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             tts.language = Locale.ENGLISH
