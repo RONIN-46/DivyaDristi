@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.krushna.divyadrishti.ocr.OCRManager
 import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.io.InputStream
