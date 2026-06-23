@@ -369,6 +369,26 @@
                     android:text="Redetect"
                     android:textColor="@android:color/white" />
 
+                <Button
+                    android:id="@+id/ocrButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="@android:color/holo_blue_dark"
+                    android:text="Read Text"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/ocrResultText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/status_background"
+                    android:padding="12dp"
+                    android:text="OCR Result Appears Here"
+                    android:textColor="@android:color/white"
+                    android:textSize="16sp" />
+
                 <TextView
                     android:id="@+id/resultText"
                     android:layout_width="match_parent"
@@ -401,7 +421,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             android:gravity="center"
-            android:text="DivyaDrushti"
+            android:text="DivyaDrishti"
             android:textColor="@android:color/darker_gray"
             android:textSize="24sp"
             app:layout_constraintEnd_toEndOf="parent"
