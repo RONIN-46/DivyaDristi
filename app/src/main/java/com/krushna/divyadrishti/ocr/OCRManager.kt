@@ -1,29 +1,24 @@
 package com.krushna.divyadrishti.ocr
 
-import android.content.Context
 import android.graphics.Bitmap
 
-class OCRManager(
-    private val context: Context
-) {
+object OCRManager {
 
-    private val modelLoader =
-        ModelLoader(context)
+    private val preprocessor = ImagePreprocessor()
 
-    fun initialize() {
+    fun recognize(bitmap: Bitmap): String {
 
-        modelLoader.verifyModels()
-
-    }
-
-    fun recognizeText(
-        bitmap: Bitmap
-    ): String {
+        val processedBitmap =
+            preprocessor.process(bitmap)
 
         return """
             OCR Engine Ready
-            Width = ${bitmap.width}
-            Height = ${bitmap.height}
+            
+            Original:
+            ${bitmap.width} x ${bitmap.height}
+            
+            Processed:
+            ${processedBitmap.width} x ${processedBitmap.height}
         """.trimIndent()
     }
 }
