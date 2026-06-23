@@ -1,0 +1,546 @@
+package com.krushna.divyadrishti
+
+import android.Manifest
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
+import android.net.wifi.WifiConfiguration
+import android.net.wifi.WifiManager
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.view.View
+import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
+import androidx.cardview.widget.CardView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import org.tensorflow.lite.Interpreter
+import java.io.FileInputStream
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
+import java.util.*
+import kotlin.concurrent.thread
+import kotlin.math.exp
+import kotlin.math.max
+import kotlin.math.min
+
+data class ObjectDetection(val label: String, val xCenterNorm: Float)
+private data class Detection(val box: BoundingBox, val label: String, val confidence: Float)
+private data class BoundingBox(val x: Float, val y: Float, val w: Float, val h: Float)
+
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
+
+    private lateinit var imageView: ImageView
+    private lateinit var resultText: TextView
+    private lateinit var debugText: TextView
+    private lateinit var detectButton: Button
+    private lateinit var connectButton: Button
+    private lateinit var modeToggleButton: Button
+    private lateinit var captureButton: Button
+    private lateinit var statusText: TextView
+    private lateinit var currencyToggleButton: Switch
+    private lateinit var tts: TextToSpeech
+    private lateinit var yoloInterpreter: Interpreter
+    private lateinit var placesInterpreter: Interpreter
+    private lateinit var labels: List<String>
+    private lateinit var categories: List<String>
+
+    // New UI components
+    private lateinit var connectionStatus: TextView
+    private lateinit var modeStatus: TextView
+    private lateinit var statusIndicator: View
+    private lateinit var cameraStatusIndicator: View
+    private lateinit var cameraStatusText: TextView
+    private lateinit var intervalEditText: EditText
+    private lateinit var autoModeSettingsCard: CardView
+
+    private lateinit var currencyInterpreter: Interpreter
+    private lateinit var currencyLabels: List<String>
+    private var isCurrencyDetectionEnabled = false
+
+    private val currencyInputSize = 640
+    private val currencyConfidenceThreshold = 0.35f
+
+    private val esp32IP = "192.168.4.1"
+    private val esp32SSID = "ESP32_CAM_AP"
+    private val esp32Password = "12345678"
+    private val esp32CaptureURL = "http://$esp32IP/capture"
+
+    private var isAutoMode = false
+    private val handler = Handler(Looper.getMainLooper())
+    private lateinit var autoCaptureRunnable: Runnable
+    private var autoCaptureInterval = 30000L // Default 30 seconds
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Initialize UI components
+        imageView = findViewById(R.id.imageView)
+        resultText = findViewById(R.id.resultText)
+        debugText = findViewById(R.id.debugText)
+        detectButton = findViewById(R.id.detectButton)
+        connectButton = findViewById(R.id.connectButton)
+        modeToggleButton = findViewById(R.id.modeToggleButton)
+        captureButton = findViewById(R.id.captureButton)
+        statusText = findViewById(R.id.statusText)
+        currencyToggleButton = findViewById(R.id.currencyToggleButton)
+        connectionStatus = findViewById(R.id.connectionStatus)
+        modeStatus = findViewById(R.id.modeStatus)
+        statusIndicator = findViewById(R.id.statusIndicator)
+        cameraStatusIndicator = findViewById(R.id.cameraStatusIndicator)
+        cameraStatusText = findViewById(R.id.cameraStatusText)
+        intervalEditText = findViewById(R.id.intervalEditText)
+        autoModeSettingsCard = findViewById(R.id.autoModeSettingsCard)
+
+        tts = TextToSpeech(this, this)
+
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(
+                Manifest.permission.ACCESS_WIFI_STATE,
+                Manifest.permission.CHANGE_WIFI_STATE,
+                Manifest.permission.INTERNET
+            ),
+            1
+        )
+
+        loadModels()
+
+        currencyToggleButton.setOnCheckedChangeListener { _, isChecked ->
+            isCurrencyDetectionEnabled = isChecked
+            val message = if (isChecked) "Currency detection enabled" else "Currency detection disabled"
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            statusText.text = message
+        }
+
+        autoCaptureRunnable = object : Runnable {
+            override fun run() {
+                if (isAutoMode) {
+                    captureImageFromESP32()
+                    // Use the user-configurable interval
+                    handler.postDelayed(this, autoCaptureInterval)
+                }
+            }
+        }
+
+        connectButton.setOnClickListener { connectToESP32WiFi() }
+        modeToggleButton.setOnClickListener { toggleCaptureMode() }
+        captureButton.setOnClickListener { if (!isAutoMode) captureImageFromESP32() }
+
+        detectButton.setOnClickListener {
+            val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
+            if (bitmap != null) {
+                processAndSpeak(bitmap)
+            } else {
+                Toast.makeText(this, "No image available to process", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        updateUIForMode()
+    }
+
+    private fun loadModels() {
+        thread {
+            try {
+                runOnUiThread {
+                    debugText.visibility = View.VISIBLE
+                    debugText.text = "Loading models..."
+                }
+                yoloInterpreter = Interpreter(loadModelFile("yolov8n_float32.tflite"))
+                placesInterpreter = Interpreter(loadModelFile("places365_float32.tflite"))
+                currencyInterpreter = Interpreter(loadModelFile("Currency_32.tflite"))
+
+                categories = assets.open("places365_labels.txt").bufferedReader().readLines()
+                labels = assets.open("yolo_labels.txt").bufferedReader().readLines().map {
+                    if (it.contains(":")) it.substringAfter(":").trim() else it.trim()
+                }
+                currencyLabels = assets.open("Currency_labels.txt").bufferedReader().readLines()
+
+                runOnUiThread {
+                    statusText.text = "All models loaded successfully."
+                    debugText.text = "Models loaded."
+                    detectButton.isEnabled = true
+                    currencyToggleButton.isEnabled = true
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "Error loading models"
+                    debugText.visibility = View.VISIBLE
+                    debugText.text = "Model Load Error: ${e.message}"
+                }
+            }
+        }
+    }
+
+    private fun connectToESP32WiFi() {
+        statusText.text = "Connecting to ESP32..."
+        thread {
+            try {
+                val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+                val wifiConfig = WifiConfiguration().apply {
+                    SSID = "\"$esp32SSID\""
+                    preSharedKey = "\"$esp32Password\""
+                }
+
+                val netId = wifiManager.addNetwork(wifiConfig)
+                wifiManager.disconnect()
+                wifiManager.enableNetwork(netId, true)
+                wifiManager.reconnect()
+
+                Thread.sleep(5000)
+
+                runOnUiThread {
+                    statusText.text = "Connected to ESP32-CAM"
+                    connectionStatus.text = "Online"
+                    connectionStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
+                    cameraStatusText.text = "Connected"
+                    statusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
+                    cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "Connection failed: ${e.message}"
+                    connectionStatus.text = "Offline"
+                    connectionStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_light))
+                    cameraStatusText.text = "Disconnected"
+                    statusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
+                    cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
+                }
+            }
+        }
+    }
+
+    private fun captureImageFromESP32() {
+        statusText.text = "Capturing image..."
+        thread {
+            try {
+                val url = URL(esp32CaptureURL)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+                connection.connect()
+
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val inputStream: InputStream = connection.inputStream
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream.close()
+
+                    runOnUiThread {
+                        imageView.setImageBitmap(bitmap)
+                        statusText.text = if (isAutoMode) "Auto mode: Image captured" else "Manual capture successful"
+                        // Automatically process the image after capture
+                        processAndSpeak(bitmap)
+                    }
+                } else {
+                    runOnUiThread {
+                        statusText.text = "Capture failed: HTTP ${connection.responseCode}"
+                    }
+                }
+                connection.disconnect()
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "Capture error: ${e.message}"
+                }
+            }
+        }
+    }
+
+    private fun processAndSpeak(bitmap: Bitmap) {
+        thread {
+            try {
+                runOnUiThread {
+                    statusText.text = "Processing..."
+                    detectButton.isEnabled = false
+                    debugText.visibility = View.GONE
+                }
+
+                val caption = processImage(bitmap)
+                runOnUiThread {
+                    resultText.text = caption
+                    speakText(caption)
+                    statusText.text = "Processing complete."
+                    detectButton.isEnabled = true
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "Error: ${e.message}"
+                    debugText.visibility = View.VISIBLE
+                    debugText.text = "Processing Error: ${e.message}"
+                    detectButton.isEnabled = true
+                }
+            }
+        }
+    }
+
+
+    private fun toggleCaptureMode() {
+        isAutoMode = !isAutoMode
+        if (isAutoMode) {
+            // Read interval from EditText when enabling auto mode
+            val intervalString = intervalEditText.text.toString()
+            if (intervalString.isNotEmpty() && intervalString.toLong() > 0) {
+                autoCaptureInterval = intervalString.toLong() * 1000 // Convert seconds to ms
+            } else {
+                autoCaptureInterval = 30000L // Reset to default if input is invalid
+            }
+            handler.post(autoCaptureRunnable)
+            Toast.makeText(this, "Auto mode enabled (${autoCaptureInterval / 1000}s interval)", Toast.LENGTH_SHORT).show()
+        } else {
+            handler.removeCallbacks(autoCaptureRunnable)
+            Toast.makeText(this, "Manual mode enabled", Toast.LENGTH_SHORT).show()
+        }
+        updateUIForMode()
+    }
+
+    private fun updateUIForMode() {
+        modeToggleButton.text = if (isAutoMode) "Manual" else "Auto"
+        modeStatus.text = if (isAutoMode) "Auto" else "Manual"
+        modeStatus.setTextColor(ContextCompat.getColor(this, if (isAutoMode) android.R.color.holo_blue_light else android.R.color.holo_orange_light))
+        captureButton.isEnabled = !isAutoMode
+        statusText.text = if (isAutoMode) "Auto Mode Active" else "Manual Mode Active"
+        autoModeSettingsCard.visibility = if (isAutoMode) View.VISIBLE else View.GONE
+    }
+
+    private fun loadModelFile(modelName: String): MappedByteBuffer {
+        val fileDescriptor = assets.openFd(modelName)
+        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+        val fileChannel = inputStream.channel
+        val startOffset = fileDescriptor.startOffset
+        val declaredLength = fileDescriptor.declaredLength
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+    }
+
+    private fun processImage(bitmap: Bitmap): String {
+        // If currency detection is enabled, ONLY perform currency detection.
+        if (isCurrencyDetectionEnabled) {
+            val currencyResult = detectCurrency(bitmap)
+            return if (currencyResult.isNotEmpty()) {
+                currencyResult
+            } else {
+                "No currency detected."
+            }
+        }
+
+        // Otherwise, proceed with normal scene and object detection.
+        val (scene, confidence) = predictScene(bitmap)
+        val confidencePercentage = (confidence * 100).toInt()
+        val detections = detectObjects(bitmap)
+
+        val cleanScene = scene
+            .substringAfterLast("/")
+            .replace(Regex("[\\d/_\\\\-]"), " ")
+            .trim()
+
+        val sceneDescription = when {
+            confidencePercentage >= 60 -> "I'm pretty sure you are in a $cleanScene."
+            confidencePercentage >= 30 -> "I'm fairly sure this is a $cleanScene."
+            else -> "I think this might be a $cleanScene."
+        }
+
+        val objectSummary = if (detections.isNotEmpty()) {
+            summarizeEntities(detections)
+        } else {
+            "I don't see any other major objects."
+        }
+
+        return "$sceneDescription $objectSummary"
+    }
+
+    private fun detectCurrency(bitmap: Bitmap): String {
+        try {
+            val resized = Bitmap.createScaledBitmap(bitmap, currencyInputSize, currencyInputSize, true)
+            val byteBuffer = ByteBuffer.allocateDirect(1 * currencyInputSize * currencyInputSize * 3 * 4)
+            byteBuffer.order(ByteOrder.nativeOrder())
+
+            val intValues = IntArray(currencyInputSize * currencyInputSize)
+            resized.getPixels(intValues, 0, resized.width, 0, 0, resized.width, resized.height)
+
+            var pixel = 0
+            for (i in 0 until currencyInputSize) {
+                for (j in 0 until currencyInputSize) {
+                    val value = intValues[pixel++]
+                    byteBuffer.putFloat(((value shr 16) and 0xFF) / 255.0f)
+                    byteBuffer.putFloat(((value shr 8) and 0xFF) / 255.0f)
+                    byteBuffer.putFloat((value and 0xFF) / 255.0f)
+                }
+            }
+
+            val output = Array(1) { Array(11) { FloatArray(8400) } }
+            currencyInterpreter.run(byteBuffer, output)
+
+            val currencyDetections = mutableListOf<Detection>()
+
+            for (i in 0 until 8400) {
+                val classScores = FloatArray(7) { c -> output[0][4 + c][i] }
+                val confidence = classScores.maxOrNull() ?: 0f
+
+                if (confidence > currencyConfidenceThreshold) {
+                    val classIndex = classScores.indexOfFirst { it == confidence }
+                    if (classIndex in currencyLabels.indices) {
+                        val label = currencyLabels[classIndex]
+                        val x = output[0][0][i]
+                        val y = output[0][1][i]
+                        val w = output[0][2][i]
+                        val h = output[0][3][i]
+                        currencyDetections.add(Detection(BoundingBox(x, y, w, h), label, confidence))
+                    }
+                }
+            }
+
+            val finalDetections = nonMaxSuppression(currencyDetections, 0.5f)
+
+            if (finalDetections.isNotEmpty()) {
+                val currencyCounts = finalDetections.groupingBy { it.label }.eachCount()
+                val result = currencyCounts.map { (label, count) ->
+                    if (count > 1) "$count notes of $label" else "$label note"
+                }.joinToString(", ")
+                return "$result detected."
+            }
+            return ""
+
+        } catch (e: Exception) {
+            runOnUiThread {
+                debugText.visibility = View.VISIBLE
+                debugText.text = "Currency Error: ${e.message}"
+            }
+            return ""
+        }
+    }
+
+    private fun softmax(logits: FloatArray): FloatArray {
+        val maxLogit = logits.maxOrNull() ?: 0f
+        val exps = logits.map { exp(it - maxLogit) }
+        val sumExps = exps.sum()
+        return exps.map { it / sumExps }.toFloatArray()
+    }
+
+    private fun predictScene(bitmap: Bitmap): Pair<String, Float> {
+        val inputSize = 224
+        val resized = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
+        val byteBuffer = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4).apply { order(ByteOrder.nativeOrder()) }
+        val intValues = IntArray(inputSize * inputSize)
+        resized.getPixels(intValues, 0, resized.width, 0, 0, resized.width, resized.height)
+        var pixel = 0
+        for (i in 0 until inputSize) {
+            for (j in 0 until inputSize) {
+                val `val` = intValues[pixel++]
+                byteBuffer.putFloat((((`val` shr 16 and 0xFF) / 255.0f - 0.485f) / 0.229f))
+                byteBuffer.putFloat((((`val` shr 8 and 0xFF) / 255.0f - 0.456f) / 0.224f))
+                byteBuffer.putFloat((((`val` and 0xFF) / 255.0f - 0.406f) / 0.225f))
+            }
+        }
+        val outputLogits = Array(1) { FloatArray(365) }
+        placesInterpreter.run(byteBuffer, outputLogits)
+        val probabilities = softmax(outputLogits[0])
+        val maxIdx = probabilities.indices.maxByOrNull { probabilities[it] } ?: 0
+        return Pair(categories[maxIdx], probabilities[maxIdx])
+    }
+
+    private fun detectObjects(bitmap: Bitmap): List<ObjectDetection> {
+        val inputSize = 640
+        val resized = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
+        val byteBuffer = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4).apply { order(ByteOrder.nativeOrder()) }
+        val intValues = IntArray(inputSize * inputSize)
+        resized.getPixels(intValues, 0, resized.width, 0, 0, resized.width, resized.height)
+        var pixel = 0
+        for (i in 0 until inputSize) {
+            for (j in 0 until inputSize) {
+                val `val` = intValues[pixel++]
+                byteBuffer.putFloat(((`val` shr 16) and 0xFF) / 255.0f)
+                byteBuffer.putFloat(((`val` shr 8) and 0xFF) / 255.0f)
+                byteBuffer.putFloat((`val` and 0xFF) / 255.0f)
+            }
+        }
+        val output = Array(1) { Array(84) { FloatArray(8400) } }
+        yoloInterpreter.run(byteBuffer, output)
+        val detections = mutableListOf<Detection>()
+        for (i in 0 until 8400) {
+            val classScores = FloatArray(80) { c -> output[0][4 + c][i] }
+            val confidence = classScores.maxOrNull() ?: 0f
+            if (confidence > 0.25f) {
+                val classIndex = classScores.indexOfFirst { it == confidence }
+                val x = output[0][0][i]
+                val y = output[0][1][i]
+                val w = output[0][2][i]
+                val h = output[0][3][i]
+                detections.add(Detection(BoundingBox(x, y, w, h), labels[classIndex], confidence))
+            }
+        }
+        val finalDetections = nonMaxSuppression(detections)
+        return finalDetections.map { ObjectDetection(it.label, it.box.x) }
+    }
+
+    private fun nonMaxSuppression(detections: List<Detection>, iouThreshold: Float = 0.5f): List<Detection> {
+        val finalDetections = mutableListOf<Detection>()
+        detections.groupBy { it.label }.forEach { (_, group) ->
+            var candidates = group.sortedByDescending { it.confidence }
+            while (candidates.isNotEmpty()) {
+                val best = candidates.first()
+                finalDetections.add(best)
+                candidates = candidates.filter { calculateIoU(best.box, it.box) < iouThreshold }
+            }
+        }
+        return finalDetections
+    }
+
+    private fun calculateIoU(box1: BoundingBox, box2: BoundingBox): Float {
+        val x1 = max(box1.x - box1.w / 2, box2.x - box2.w / 2)
+        val y1 = max(box1.y - box1.h / 2, box2.y - box2.h / 2)
+        val x2 = min(box1.x + box1.w / 2, box2.x + box2.w / 2)
+        val y2 = min(box1.y + box1.h / 2, box2.y + box2.h / 2)
+        val intersectionArea = max(0f, x2 - x1) * max(0f, y2 - y1)
+        val box1Area = box1.w * box1.h
+        val box2Area = box2.w * box2.h
+        val unionArea = box1Area + box2Area - intersectionArea
+        return if (unionArea > 0) intersectionArea / unionArea else 0f
+    }
+
+    private fun summarizeEntities(detections: List<ObjectDetection>): String {
+        val formatList = { map: Map<String, Int> ->
+            val items = map.map { (label, count) -> if (count > 1) "$count ${label}s" else "a $label" }
+            when {
+                items.isEmpty() -> ""
+                items.size == 1 -> items.first()
+                items.size == 2 -> items.joinToString(" and ")
+                else -> items.dropLast(1).joinToString(", ") + ", and " + items.last()
+            }
+        }
+        val leftObjects = formatList(detections.filter { it.xCenterNorm < 0.33f }.groupingBy { it.label }.eachCount())
+        val centerObjects = formatList(detections.filter { it.xCenterNorm >= 0.33f && it.xCenterNorm < 0.67f }.groupingBy { it.label }.eachCount())
+        val rightObjects = formatList(detections.filter { it.xCenterNorm >= 0.67f }.groupingBy { it.label }.eachCount())
+        val sentenceParts = mutableListOf<String>()
+        if (centerObjects.isNotEmpty()) sentenceParts.add("in front of you, there is $centerObjects")
+        if (leftObjects.isNotEmpty()) sentenceParts.add("to your left, I see $leftObjects")
+        if (rightObjects.isNotEmpty()) sentenceParts.add("and to your right is $rightObjects")
+        if (sentenceParts.isEmpty()) return ""
+        return sentenceParts.joinToString(", ") + "."
+    }
+
+    private fun speakText(text: String) {
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "")
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            tts.language = Locale.ENGLISH
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tts.stop()
+        tts.shutdown()
+        yoloInterpreter.close()
+        placesInterpreter.close()
+        currencyInterpreter.close()
+        handler.removeCallbacksAndMessages(null)
+    }
+}
