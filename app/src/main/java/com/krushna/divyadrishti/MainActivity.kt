@@ -31,6 +31,7 @@ import kotlin.concurrent.thread
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
+import com.krushna.divyadrishti.ocr.ImagePreprocessor
 
 data class ObjectDetection(val label: String, val xCenterNorm: Float)
 private data class Detection(val box: BoundingBox, val label: String, val confidence: Float)
@@ -232,10 +233,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                     val inputStream: InputStream = connection.inputStream
                     val bitmap = BitmapFactory.decodeStream(inputStream)
+                    val processor = ImagePreprocessor()
+
+                    val processedBitmap =
+                        processor.process(bitmap)
                     inputStream.close()
 
                     runOnUiThread {
-                        imageView.setImageBitmap(bitmap)
+                        imageView.setImageBitmap(processedBitmap)
                         statusText.text = if (isAutoMode) "Auto mode: Image captured" else "Manual capture successful"
                         // Automatically process the image after capture
                         processAndSpeak(bitmap)
