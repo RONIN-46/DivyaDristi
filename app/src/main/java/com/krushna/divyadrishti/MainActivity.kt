@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         detectButton.setOnClickListener {
             val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
             if (bitmap != null) {
-                processAndSpeak(bitmap)
+                //processAndSpeak(bitmap)
             } else {
                 Toast.makeText(this, "No image available to process", Toast.LENGTH_SHORT).show()
             }
@@ -159,11 +159,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             if (bitmap != null) {
 
-                val ocrText =
-                    OCRManager.recognize(bitmap)
+                val processedBitmap =
+                    ImagePreprocessor().process(bitmap)
 
-                ocrResultText.text = ocrText
+                OCRManager().recognize(
+                    processedBitmap,
+                    onResult = { text ->
 
+                        runOnUiThread {
+
+                            ocrResultText.text = text
+
+                            if (text.isNotBlank()) {
+                                speakText(text)
+                            }
+                        }
+                    },
+                    onError = {
+
+                        runOnUiThread {
+                            ocrResultText.text = "OCR Failed"
+                        }
+                    }
+                )
 
             } else {
 
@@ -276,17 +294,31 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         val processedBitmap =
                             ImagePreprocessor().process(bitmap)
 
-                        val ocrText =
-                            OCRManager.recognize(processedBitmap)
-
                         inputStream.close()
 
                         runOnUiThread {
+
                             imageView.setImageBitmap(processedBitmap)
+
                             statusText.text =
-                                if (isAutoMode) "Auto mode: Image captured" else "Manual capture successful"
-                            // Automatically process the image after capture
-                            processAndSpeak(bitmap)
+                                if (isAutoMode) "Auto mode: Image captured"
+                                else "Manual capture successful"
+
+                            OCRManager().recognize(
+                                processedBitmap,
+                                onResult = { text ->
+
+                                    resultText.text = text
+
+                                    if (text.isNotBlank()) {
+                                        speakText(text)
+                                    }
+                                },
+                                onError = {
+
+                                    resultText.text = "OCR Failed"
+                                }
+                            )
                         }
                     } else {
                         runOnUiThread {
