@@ -17,7 +17,7 @@
             android:id="@+id/headerTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ESP32-CAM"
+            android:text="DivyaDrishti"
             android:textColor="@android:color/white"
             android:textSize="24sp"
             android:textStyle="bold"
@@ -28,22 +28,11 @@
             android:id="@+id/headerSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Smart Camera Controller"
+            android:text="AI Vision Assistant"
             android:textColor="@android:color/darker_gray"
             android:textSize="14sp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/headerTitle" />
-
-        <ImageButton
-            android:id="@+id/infoButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_info_details"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:tint="@android:color/white"
-            android:contentDescription="Info" />
 
         <!-- Connection and Mode Section -->
         <GridLayout
@@ -147,7 +136,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/connectionModeLayout"
-            android:visibility="gone"> <!-- Initially hidden -->
+            android:visibility="gone">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -193,31 +182,21 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_manage"
-                    app:tint="@android:color/white"
-                    android:contentDescription="Currency Icon"/>
-
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
                     android:layout_weight="1"
-                    android:text="Currency Model"
+                    android:text="Currency Detection"
                     android:textColor="@android:color/white" />
 
                 <Switch
                     android:id="@+id/currencyToggleButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:thumbTint="@android:color/holo_blue_light"
-                    tools:ignore="UseSwitchCompatOrMaterialXml" />
+                    android:layout_height="wrap_content" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- System Status Section -->
+        <!-- System Status -->
         <androidx.cardview.widget.CardView
             android:id="@+id/systemStatusCard"
             android:layout_width="0dp"
@@ -235,34 +214,10 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="System Status"
-                        android:textColor="@android:color/white"
-                        android:textSize="18sp" />
-
-                    <View
-                        android:id="@+id/statusIndicator"
-                        android:layout_width="12dp"
-                        android:layout_height="12dp"
-                        android:background="@drawable/status_indicator_neutral" />
-                </LinearLayout>
-
                 <TextView
                     android:id="@+id/statusText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="@drawable/status_background"
-                    android:padding="12dp"
                     android:text="System Idle"
                     android:textColor="@android:color/white" />
             </LinearLayout>
@@ -286,35 +241,6 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Camera Feed"
-                        android:textColor="@android:color/white"
-                        android:textSize="18sp" />
-
-                    <View
-                        android:id="@+id/cameraStatusIndicator"
-                        android:layout_width="12dp"
-                        android:layout_height="12dp"
-                        android:background="@drawable/status_indicator_neutral" />
-
-                    <TextView
-                        android:id="@+id/cameraStatusText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="Disconnected"
-                        android:textColor="@android:color/darker_gray" />
-                </LinearLayout>
-
                 <ImageView
                     android:id="@+id/imageView"
                     android:layout_width="match_parent"
@@ -331,6 +257,15 @@
                     android:layout_marginTop="16dp"
                     android:backgroundTint="@android:color/holo_blue_bright"
                     android:text="Capture Image"
+                    android:textColor="@android:color/white" />
+
+                <Button
+                    android:id="@+id/pickButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@android:color/holo_purple"
+                    android:text="Pick from Gallery"
                     android:textColor="@android:color/white" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -353,20 +288,12 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Object Detection"
-                    android:textColor="@android:color/white"
-                    android:textSize="18sp" />
-
                 <Button
                     android:id="@+id/detectButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
                     android:backgroundTint="@android:color/holo_green_dark"
-                    android:text="Redetect"
+                    android:text="Detect Objects"
                     android:textColor="@android:color/white" />
 
                 <Button
@@ -375,7 +302,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:backgroundTint="@android:color/holo_blue_dark"
-                    android:text="Read Text"
+                    android:text="Read Text (OCR)"
                     android:textColor="@android:color/white" />
 
                 <TextView
@@ -383,22 +310,18 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:background="@drawable/status_background"
-                    android:padding="12dp"
-                    android:text="OCR Result Appears Here"
-                    android:textColor="@android:color/white"
-                    android:textSize="16sp" />
+                    android:padding="8dp"
+                    android:text="OCR Result"
+                    android:textColor="@android:color/white" />
 
                 <TextView
                     android:id="@+id/resultText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:background="@drawable/status_background"
-                    android:padding="12dp"
-                    android:text="Standby"
+                    android:padding="8dp"
+                    android:text="Detection Result"
                     android:textColor="@android:color/white"
-                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -406,27 +329,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:background="#282828"
-                    android:padding="8dp"
                     android:textColor="@android:color/darker_gray"
-                    android:visibility="gone"
-                    android:text="Logs will appear here..." />
+                    android:visibility="gone" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
-
-        <!-- Footer -->
-        <TextView
-            android:id="@+id/footerText"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:gravity="center"
-            android:text="DivyaDrishti"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="24sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/objectDetectionCard" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
