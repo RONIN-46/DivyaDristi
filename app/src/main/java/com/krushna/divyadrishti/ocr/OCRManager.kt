@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.google.mlkit.vision.text.Text
+import kotlin.math.abs
 
 class OCRManager {
 
@@ -23,10 +25,66 @@ class OCRManager {
 
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
-                onResult(visionText.text)
+
+                val allLines = mutableListOf<Text.Line>()
+
+                // Collect all detected lines
+                visionText.textBlocks.forEach { block ->
+                    allLines.addAll(block.lines)
+                }
+
+                // Sort from top to bottom
+                val sortedLines = allLines.sortedBy {
+                    it.boundingBox?.top ?: 0
+                }
+
+                // Group lines having similar Y coordinate
+                val groupedLines = mutableListOf<MutableList<Text.Line>>()
+
+                val yThreshold = 20
+
+                for (line in sortedLines) {
+
+                    if (groupedLines.isEmpty()) {
+                        groupedLines.add(mutableListOf(line))
+                    } else {
+
+                        val lastGroup = groupedLines.last()
+
+                        val lastTop = lastGroup.first().boundingBox?.top ?: 0
+                        val currentTop = line.boundingBox?.top ?: 0
+
+                        if (abs(currentTop - lastTop) <= yThreshold) {
+
+                            lastGroup.add(line)
+
+                        } else {
+
+                            groupedLines.add(mutableListOf(line))
+
+                        }
+                    }
+                }
+
+                // Sort each row from left to right
+                val finalText = groupedLines.joinToString("\n") { row ->
+
+                    row.sortedBy {
+                        it.boundingBox?.left ?: 0
+                    }.joinToString(" ") {
+                        it.text
+                    }
+
+                }
+
+                onResult(finalText)
+
             }
             .addOnFailureListener {
+
                 onError(it)
+
             }
     }
 }
+
