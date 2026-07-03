@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var imageView: ImageView
     private lateinit var resultText: TextView
+    private lateinit var originalBitmap: Bitmap
     private lateinit var debugText: TextView
     private lateinit var detectButton: Button
     private lateinit var connectButton: Button
@@ -164,40 +165,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         ocrButton.setOnClickListener {
 
-            val bitmap =
-                (imageView.drawable as? BitmapDrawable)?.bitmap
+            if (::originalBitmap.isInitialized) {
 
-            if (bitmap != null) {
-
-                val processedBitmap =
-                    ImagePreprocessor().process(bitmap)
-
-                OCRManager().recognize(
-                    processedBitmap,
-                    onResult = { text ->
-
-                        runOnUiThread {
-
-                            ocrResultText.text = text
-
-                            if (text.isNotBlank()) {
-                                speakText(text)
-                            }
-                        }
-                    },
-                    onError = {
-
-                        runOnUiThread {
-                            ocrResultText.text = "OCR Failed"
-                        }
-                    }
-                )
+                runOCR(originalBitmap)
 
             } else {
 
                 Toast.makeText(
                     this,
-                    "No image captured",
+                    "Capture an image first",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -305,31 +281,46 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         ImagePreprocessor().process(bitmap)
 
                     inputStream.close()
+                        runOnUiThread {
 
-                    runOnUiThread {
+                            // Save the original captured image
+                            originalBitmap = bitmap
 
-                        imageView.setImageBitmap(processedBitmap)
+                            // Display ONLY the original image
+                            imageView.setImageBitmap(originalBitmap)
 
-                        statusText.text =
-                            if (isAutoMode) "Auto mode: Image captured"
-                            else "Manual capture successful"
+                            statusText.text =
+                                if (isAutoMode) "Auto mode: Image captured"
+                                else "Manual capture successful"
 
-                        OCRManager().recognize(
-                            processedBitmap,
-                            onResult = { text ->
+                            // Send the original image for processing
+                            processAndSpeak(originalBitmap)
+                        }
+//                    runOnUiThread {
+//
+//                        imageView.setImageBitmap(processedBitmap)
+//
+//                        statusText.text =
+//                            if (isAutoMode) "Auto mode: Image captured"
+//                            else "Manual capture successful"
+//
+//                        OCRManager().recognize(
+//                            processedBitmap,
+//                            onResult = { text ->
+//
+//                                resultText.text = text
+//
+//                                if (text.isNotBlank()) {
+//                                    speakText(text)
+//                                }
+//                            },
+//                            onError = {
+//
+//                                resultText.text = "OCR Failed"
+//                            }
+//                        )
+//                    }
 
-                                resultText.text = text
-
-                                if (text.isNotBlank()) {
-                                    speakText(text)
-                                }
-                            },
-                            onError = {
-
-                                resultText.text = "OCR Failed"
-                            }
-                        )
-                    }
                 } else {
                     runOnUiThread {
                         statusText.text = "Capture failed: HTTP ${connection.responseCode}"
@@ -371,6 +362,38 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun runOCR(bitmap: Bitmap) {
+
+        val processedBitmap =
+            ImagePreprocessor().process(bitmap)
+
+        OCRManager().recognize(
+
+            processedBitmap,
+
+            onResult = { text ->
+
+                runOnUiThread {
+
+                    ocrResultText.text = text
+
+                }
+
+            },
+
+            onError = {
+
+                runOnUiThread {
+
+                    ocrResultText.text = "OCR Failed"
+
+                }
+
+            }
+
+        )
+
+    }
 
     private fun toggleCaptureMode() {
         isAutoMode = !isAutoMode
