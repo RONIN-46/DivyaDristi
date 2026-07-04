@@ -39,6 +39,9 @@ import android.widget.Button
 import android.widget.TextView
 import com.krushna.divyadrishti.ocr.ImagePreprocessor
 import com.krushna.divyadrishti.color.ColorDetector
+import com.krushna.divyadrishti.face.embedding.inference.FaceEmbedding
+import android.util.Log
+
 
 private data class ObjectInfo(
     val label: String,
