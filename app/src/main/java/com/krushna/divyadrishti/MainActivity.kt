@@ -41,6 +41,19 @@ import com.krushna.divyadrishti.ocr.ImagePreprocessor
 import com.krushna.divyadrishti.color.ColorDetector
 import com.krushna.divyadrishti.face.embedding.inference.FaceEmbedding
 import android.util.Log
+import android.app.AlertDialog
+import android.widget.EditText
+import com.krushna.divyadrishti.face.database.FaceDatabase
+import com.krushna.divyadrishti.face.database.repository.FaceRepository
+import com.krushna.divyadrishti.face.detection.FaceDetector
+import com.krushna.divyadrishti.face.embedding.FaceCropper
+import com.krushna.divyadrishti.face.registration.FaceRegistrationFlow
+import com.krushna.divyadrishti.face.registration.FaceRegistrationManager
+
+import com.krushna.divyadrishti.face.recognition.FaceRecognitionFlow
+import kotlinx.coroutines.flow.first
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 
 private data class ObjectInfo(
@@ -65,12 +78,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var captureButton: Button
     private lateinit var ocrButton: Button
     private lateinit var pickButton: Button
+
+    private lateinit var registerFaceButton: Button
+    private lateinit var manageFacesButton: Button
     private lateinit var ocrResultText: TextView
     private lateinit var statusText: TextView
     private lateinit var currencyToggleButton: Switch
     private lateinit var tts: TextToSpeech
     private lateinit var yoloInterpreter: Interpreter
     private lateinit var placesInterpreter: Interpreter
+
+    private lateinit var faceRecognitionFlow: FaceRecognitionFlow
+    private lateinit var faceRegistrationFlow: FaceRegistrationFlow
+    private lateinit var faceRepository: FaceRepository
+
     private lateinit var labels: List<String>
     private lateinit var categories: List<String>
 
@@ -103,22 +124,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private val latestScene = mutableListOf<ObjectInfo>()
 
     // Launcher for selecting an image from the gallery
-    private val imagePickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val imageUri: Uri? = result.data?.data
-            if (imageUri != null) {
-                try {
-                    val inputStream = contentResolver.openInputStream(imageUri)
-                    val bitmap = BitmapFactory.decodeStream(inputStream)
-                    imageView.setImageBitmap(bitmap)
-                    processAndSpeak(bitmap) // Process image immediately
-                    statusText.text = "Gallery image loaded."
-                } catch (e: Exception) {
-                    Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
+    private val imagePickerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val imageUri: Uri? = result.data?.data
+                if (imageUri != null) {
+                    try {
+                        val inputStream = contentResolver.openInputStream(imageUri)
+                        val bitmap = BitmapFactory.decodeStream(inputStream)
+                        imageView.setImageBitmap(bitmap)
+                        processAndSpeak(bitmap) // Process image immediately
+                        statusText.text = "Gallery image loaded."
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -136,6 +158,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         pickButton = findViewById(R.id.pickButton)
         ocrResultText = findViewById(R.id.ocrResultText)
         statusText = findViewById(R.id.statusText)
+        registerFaceButton = findViewById(R.id.registerFaceButton)
+        manageFacesButton = findViewById(R.id.manageFacesButton)
         currencyToggleButton = findViewById(R.id.currencyToggleButton)
         connectionStatus = findViewById(R.id.connectionStatus)
         modeStatus = findViewById(R.id.modeStatus)
@@ -146,6 +170,30 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         autoModeSettingsCard = findViewById(R.id.autoModeSettingsCard)
 
         tts = TextToSpeech(this, this)
+
+        val faceDatabase = FaceDatabase.getInstance(this)
+
+        faceRepository = FaceRepository(
+            faceDatabase.faceDao()
+        )
+
+        faceRecognitionFlow = FaceRecognitionFlow(
+            context = this,
+            faceRepository = faceRepository
+        )
+
+        val faceEmbedding = FaceEmbedding(this)
+
+        val registrationManager = FaceRegistrationManager(
+            faceRepository = faceRepository,
+            faceEmbedding = faceEmbedding
+        )
+
+        faceRegistrationFlow = FaceRegistrationFlow(
+            faceDetector = FaceDetector(),
+            faceCropper = FaceCropper(),
+            registrationManager = registrationManager
+        )
 
         ActivityCompat.requestPermissions(
             this,
@@ -161,7 +209,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         currencyToggleButton.setOnCheckedChangeListener { _, isChecked ->
             isCurrencyDetectionEnabled = isChecked
-            val message = if (isChecked) "Currency detection enabled" else "Currency detection disabled"
+            val message =
+                if (isChecked) "Currency detection enabled" else "Currency detection disabled"
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
             statusText.text = message
         }
@@ -178,10 +227,110 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         connectButton.setOnClickListener { connectToESP32WiFi() }
         modeToggleButton.setOnClickListener { toggleCaptureMode() }
         captureButton.setOnClickListener { if (!isAutoMode) captureImageFromESP32() }
-        
+
         pickButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
             imagePickerLauncher.launch(intent)
+        }
+
+        registerFaceButton.setOnClickListener {
+
+            val bitmap =
+                (imageView.drawable as? BitmapDrawable)?.bitmap
+
+            if (bitmap == null) {
+
+                Toast.makeText(
+                    this,
+                    "Capture or pick an image first",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return@setOnClickListener
+            }
+
+            showFaceRegistrationDialog(bitmap)
+        }
+
+        manageFacesButton.setOnClickListener {
+
+            lifecycleScope.launch {
+
+                try {
+
+                    val persons =
+                        faceRepository.getAllPersons().first()
+
+                    if (persons.isEmpty()) {
+
+                        Toast.makeText(
+                            this@MainActivity,
+                            "No registered faces",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        return@launch
+                    }
+
+                    val personNames = persons.map { person ->
+                        "${person.name} (${person.relation})"
+                    }.toTypedArray()
+
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Registered Faces")
+                        .setItems(personNames) { _, position ->
+
+                            val selectedPerson =
+                                persons[position]
+
+                            AlertDialog.Builder(this@MainActivity)
+                                .setTitle("Delete Registered Face")
+                                .setMessage(
+                                    "Delete ${selectedPerson.name} (${selectedPerson.relation})?"
+                                )
+                                .setNegativeButton(
+                                    "Cancel",
+                                    null
+                                )
+                                .setPositiveButton("Delete") { _, _ ->
+
+                                    lifecycleScope.launch {
+
+                                        try {
+
+                                            faceRepository.deletePerson(
+                                                selectedPerson
+                                            )
+
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "${selectedPerson.name} deleted",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+
+                                        } catch (e: Exception) {
+
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "Delete failed: ${e.message}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                }
+                                .show()
+                        }
+                        .show()
+
+                } catch (e: Exception) {
+
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Failed to load registered faces: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
         }
 
         detectButton.setOnClickListener {
@@ -192,7 +341,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Toast.makeText(this, "No image available to process", Toast.LENGTH_SHORT).show()
             }
         }
-        
+
         ocrButton.setOnClickListener {
 
             if (::originalBitmap.isInitialized) {
@@ -264,7 +413,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 runOnUiThread {
                     statusText.text = "Connected to ESP32-CAM"
                     connectionStatus.text = "Online"
-                    connectionStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
+                    connectionStatus.setTextColor(
+                        ContextCompat.getColor(
+                            this,
+                            android.R.color.holo_green_light
+                        )
+                    )
                     cameraStatusText.text = "Connected"
                     statusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
                     cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
@@ -273,7 +427,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 runOnUiThread {
                     statusText.text = "Connection failed: ${e.message}"
                     connectionStatus.text = "Offline"
-                    connectionStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_light))
+                    connectionStatus.setTextColor(
+                        ContextCompat.getColor(
+                            this,
+                            android.R.color.holo_red_light
+                        )
+                    )
                     cameraStatusText.text = "Disconnected"
                     statusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
                     cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
@@ -297,21 +456,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     val bitmap = BitmapFactory.decodeStream(inputStream)
                     val processedBitmap = ImagePreprocessor().process(bitmap)
                     inputStream.close()
-                        runOnUiThread {
+                    runOnUiThread {
 
-                            // Save the original captured image
-                            originalBitmap = bitmap
+                        // Save the original captured image
+                        originalBitmap = bitmap
 
-                            // Display ONLY the original image
-                            imageView.setImageBitmap(originalBitmap)
+                        // Display ONLY the original image
+                        imageView.setImageBitmap(originalBitmap)
 
-                            statusText.text =
-                                if (isAutoMode) "Auto mode: Image captured"
-                                else "Manual capture successful"
+                        statusText.text =
+                            if (isAutoMode) "Auto mode: Image captured"
+                            else "Manual capture successful"
 
-                            // Send the original image for processing
-                            processAndSpeak(originalBitmap)
-                        }
+                        // Send the original image for processing
+                        processAndSpeak(originalBitmap)
+                    }
 //                    runOnUiThread {
 //
 //                        imageView.setImageBitmap(processedBitmap)
@@ -338,7 +497,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 //                    }
 
                 } else {
-                    runOnUiThread { statusText.text = "Capture failed: HTTP ${connection.responseCode}" }
+                    runOnUiThread {
+                        statusText.text = "Capture failed: HTTP ${connection.responseCode}"
+                    }
                 }
                 connection.disconnect()
             } catch (e: Exception) {
@@ -348,26 +509,80 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun processAndSpeak(bitmap: Bitmap) {
+
         thread {
+
             try {
+
                 runOnUiThread {
                     statusText.text = "Processing..."
                     detectButton.isEnabled = false
                     debugText.visibility = View.GONE
                 }
 
-                val caption = processImage(bitmap)
+                val sceneCaption = processImage(bitmap)
+
                 runOnUiThread {
-                    resultText.text = caption
-                    speakText(caption)
-                    statusText.text = "Processing complete."
-                    detectButton.isEnabled = true
+
+                    faceRecognitionFlow.recognize(
+
+                        bitmap = bitmap,
+
+                        onResult = { faceResult ->
+
+                            val finalCaption = when (faceResult) {
+
+                                "No face detected" ->
+                                    sceneCaption
+
+                                "Unknown person" ->
+                                    "$sceneCaption The person is unknown."
+
+                                else ->
+                                    "$sceneCaption This is $faceResult."
+                            }
+
+                            resultText.text = finalCaption
+
+                            speakText(finalCaption)
+
+                            statusText.text = "Processing complete."
+
+                            detectButton.isEnabled = true
+                        },
+
+                        onError = { error ->
+
+                            Log.e(
+                                "FACE_RECOGNITION",
+                                error
+                            )
+
+                            resultText.text = sceneCaption
+
+                            speakText(sceneCaption)
+
+                            statusText.text =
+                                "Processing complete."
+
+                            detectButton.isEnabled = true
+                        }
+                    )
                 }
+
             } catch (e: Exception) {
+
                 runOnUiThread {
-                    statusText.text = "Error: ${e.message}"
-                    debugText.visibility = View.VISIBLE
-                    debugText.text = "Processing Error: ${e.message}"
+
+                    statusText.text =
+                        "Error: ${e.message}"
+
+                    debugText.visibility =
+                        View.VISIBLE
+
+                    debugText.text =
+                        "Processing Error: ${e.message}"
+
                     detectButton.isEnabled = true
                 }
             }
@@ -417,7 +632,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 30000L
             }
             handler.post(autoCaptureRunnable)
-            Toast.makeText(this, "Auto mode enabled (${autoCaptureInterval / 1000}s interval)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "Auto mode enabled (${autoCaptureInterval / 1000}s interval)",
+                Toast.LENGTH_SHORT
+            ).show()
         } else {
             handler.removeCallbacks(autoCaptureRunnable)
             Toast.makeText(this, "Manual mode enabled", Toast.LENGTH_SHORT).show()
@@ -428,7 +647,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun updateUIForMode() {
         modeToggleButton.text = if (isAutoMode) "Manual" else "Auto"
         modeStatus.text = if (isAutoMode) "Auto" else "Manual"
-        modeStatus.setTextColor(ContextCompat.getColor(this, if (isAutoMode) android.R.color.holo_blue_light else android.R.color.holo_orange_light))
+        modeStatus.setTextColor(
+            ContextCompat.getColor(
+                this,
+                if (isAutoMode) android.R.color.holo_blue_light else android.R.color.holo_orange_light
+            )
+        )
         captureButton.isEnabled = !isAutoMode
         statusText.text = if (isAutoMode) "Auto Mode Active" else "Manual Mode Active"
         autoModeSettingsCard.visibility = if (isAutoMode) View.VISIBLE else View.GONE
@@ -462,14 +686,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             else -> "I think this might be a $cleanScene."
         }
 
-        val objectSummary = if (detections.isNotEmpty()) summarizeEntities(detections) else "I don't see any other major objects."
+        val objectSummary =
+            if (detections.isNotEmpty()) summarizeEntities(detections) else "I don't see any other major objects."
         return "$sceneDescription $objectSummary"
     }
 
     private fun detectCurrency(bitmap: Bitmap): String {
         try {
-            val resized = Bitmap.createScaledBitmap(bitmap, currencyInputSize, currencyInputSize, true)
-            val byteBuffer = ByteBuffer.allocateDirect(1 * currencyInputSize * currencyInputSize * 3 * 4).apply { order(ByteOrder.nativeOrder()) }
+            val resized =
+                Bitmap.createScaledBitmap(bitmap, currencyInputSize, currencyInputSize, true)
+            val byteBuffer =
+                ByteBuffer.allocateDirect(1 * currencyInputSize * currencyInputSize * 3 * 4)
+                    .apply { order(ByteOrder.nativeOrder()) }
             val intValues = IntArray(currencyInputSize * currencyInputSize)
             resized.getPixels(intValues, 0, resized.width, 0, 0, resized.width, resized.height)
             var pixel = 0
@@ -490,17 +718,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (confidence > currencyConfidenceThreshold) {
                     val classIndex = classScores.indexOfFirst { it == confidence }
                     if (classIndex in currencyLabels.indices) {
-                        currencyDetections.add(Detection(BoundingBox(output[0][0][i], output[0][1][i], output[0][2][i], output[0][3][i]), currencyLabels[classIndex], confidence))
+                        currencyDetections.add(
+                            Detection(
+                                BoundingBox(
+                                    output[0][0][i],
+                                    output[0][1][i],
+                                    output[0][2][i],
+                                    output[0][3][i]
+                                ), currencyLabels[classIndex], confidence
+                            )
+                        )
                     }
                 }
             }
             val finalDetections = nonMaxSuppression(currencyDetections, 0.5f)
             if (finalDetections.isNotEmpty()) {
                 val counts = finalDetections.groupingBy { it.label }.eachCount()
-                return counts.map { (l, c) -> if (c > 1) "$c notes of $l" else "$l note" }.joinToString(", ") + " detected."
+                return counts.map { (l, c) -> if (c > 1) "$c notes of $l" else "$l note" }
+                    .joinToString(", ") + " detected."
             }
             return ""
-        } catch (e: Exception) { return "" }
+        } catch (e: Exception) {
+            return ""
+        }
     }
 
     private fun softmax(logits: FloatArray): FloatArray {
@@ -513,7 +753,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun predictScene(bitmap: Bitmap): Pair<String, Float> {
         val inputSize = 224
         val resized = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
-        val byteBuffer = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4).apply { order(ByteOrder.nativeOrder()) }
+        val byteBuffer = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4)
+            .apply { order(ByteOrder.nativeOrder()) }
         val intValues = IntArray(inputSize * inputSize)
         resized.getPixels(intValues, 0, resized.width, 0, 0, resized.width, resized.height)
         var pixel = 0
@@ -535,7 +776,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun detectObjects(bitmap: Bitmap): List<ObjectInfo> {
         val inputSize = 640
         val resized = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
-        val byteBuffer = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4).apply { order(ByteOrder.nativeOrder()) }
+        val byteBuffer = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4)
+            .apply { order(ByteOrder.nativeOrder()) }
         val intValues = IntArray(inputSize * inputSize)
         resized.getPixels(intValues, 0, resized.width, 0, 0, resized.width, resized.height)
         var pixel = 0
@@ -555,7 +797,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val confidence = classScores.maxOrNull() ?: 0f
             if (confidence > 0.25f) {
                 val classIndex = classScores.indexOfFirst { it == confidence }
-                detections.add(Detection(BoundingBox(output[0][0][i], output[0][1][i], output[0][2][i], output[0][3][i]), labels[classIndex], confidence))
+                detections.add(
+                    Detection(
+                        BoundingBox(
+                            output[0][0][i],
+                            output[0][1][i],
+                            output[0][2][i],
+                            output[0][3][i]
+                        ), labels[classIndex], confidence
+                    )
+                )
             }
         }
         return nonMaxSuppression(detections).map {
@@ -564,7 +815,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun nonMaxSuppression(detections: List<Detection>, iouThreshold: Float = 0.5f): List<Detection> {
+    private fun nonMaxSuppression(
+        detections: List<Detection>,
+        iouThreshold: Float = 0.5f
+    ): List<Detection> {
         val finalDetections = mutableListOf<Detection>()
         detections.groupBy { it.label }.forEach { (_, group) ->
             var candidates = group.sortedByDescending { it.confidence }
@@ -590,14 +844,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun cropObject(bitmap: Bitmap, box: BoundingBox): Bitmap {
         val left = ((box.x - box.w / 2f) * bitmap.width).toInt().coerceIn(0, bitmap.width - 1)
         val top = ((box.y - box.h / 2f) * bitmap.height).toInt().coerceIn(0, bitmap.height - 1)
-        val width = (box.w * bitmap.width).toInt().coerceAtLeast(1).coerceAtMost(bitmap.width - left)
-        val height = (box.h * bitmap.height).toInt().coerceAtLeast(1).coerceAtMost(bitmap.height - top)
+        val width =
+            (box.w * bitmap.width).toInt().coerceAtLeast(1).coerceAtMost(bitmap.width - left)
+        val height =
+            (box.h * bitmap.height).toInt().coerceAtLeast(1).coerceAtMost(bitmap.height - top)
         return Bitmap.createBitmap(bitmap, left, top, width, height)
     }
 
     private fun summarizeEntities(detections: List<ObjectInfo>): String {
         val formatList = { map: Map<String, Int> ->
-            val items = map.map { (label, count) -> if (count > 1) "$count ${label}s" else "a $label" }
+            val items =
+                map.map { (label, count) -> if (count > 1) "$count ${label}s" else "a $label" }
             when {
                 items.isEmpty() -> ""
                 items.size == 1 -> items.first()
@@ -605,14 +862,81 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 else -> items.dropLast(1).joinToString(", ") + ", and " + items.last()
             }
         }
-        val left = formatList(detections.filter { it.xCenterNorm < 0.33f }.groupingBy { it.label }.eachCount())
-        val center = formatList(detections.filter { it.xCenterNorm in 0.33f..0.67f }.groupingBy { it.label }.eachCount())
-        val right = formatList(detections.filter { it.xCenterNorm > 0.67f }.groupingBy { it.label }.eachCount())
+        val left = formatList(detections.filter { it.xCenterNorm < 0.33f }.groupingBy { it.label }
+            .eachCount())
+        val center =
+            formatList(detections.filter { it.xCenterNorm in 0.33f..0.67f }.groupingBy { it.label }
+                .eachCount())
+        val right = formatList(detections.filter { it.xCenterNorm > 0.67f }.groupingBy { it.label }
+            .eachCount())
         val parts = mutableListOf<String>()
         if (center.isNotEmpty()) parts.add("in front of you, there is $center")
         if (left.isNotEmpty()) parts.add("to your left, I see $left")
         if (right.isNotEmpty()) parts.add("and to your right is $right")
         return if (parts.isEmpty()) "" else parts.joinToString(", ") + "."
+    }
+
+    private fun showFaceRegistrationDialog(bitmap: Bitmap) {
+
+        val nameInput = EditText(this).apply {
+            hint = "Person name"
+        }
+
+        val relationInput = EditText(this).apply {
+            hint = "Relation, e.g. Friend"
+        }
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+
+            val padding = (20 * resources.displayMetrics.density).toInt()
+
+            setPadding(
+                padding,
+                padding,
+                padding,
+                0
+            )
+
+            addView(nameInput)
+            addView(relationInput)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Register Face")
+            .setView(container)
+            .setPositiveButton("Register") { _, _ ->
+
+                faceRegistrationFlow.register(
+                    bitmap = bitmap,
+                    name = nameInput.text.toString(),
+                    relation = relationInput.text.toString(),
+                    onSuccess = { personId ->
+
+                        runOnUiThread {
+
+                            Toast.makeText(
+                                this,
+                                "Face registered. ID: $personId",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    },
+                    onError = { message ->
+
+                        runOnUiThread {
+
+                            Toast.makeText(
+                                this,
+                                message,
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                )
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun speakText(text: String) {
