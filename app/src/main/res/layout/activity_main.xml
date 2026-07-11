@@ -345,6 +345,12 @@
                     android:textColor="@android:color/white" />
 
                 <Button
+                    android:id="@+id/voiceButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Voice Command"/>
+
+                <Button
                     android:id="@+id/ocrButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

@@ -77,6 +77,7 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation("androidx.activity:activity-ktx:1.10.1")
     ksp(libs.androidx.room.compiler)
 
 

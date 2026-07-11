@@ -49,6 +49,10 @@ import com.krushna.divyadrishti.face.detection.FaceDetector
 import com.krushna.divyadrishti.face.embedding.FaceCropper
 import com.krushna.divyadrishti.face.registration.FaceRegistrationFlow
 import com.krushna.divyadrishti.face.registration.FaceRegistrationManager
+import com.krushna.divyadrishti.speech.SpeechManager
+import com.krushna.divyadrishti.speech.VoiceCommandListener
+import com.krushna.divyadrishti.llm.IntentClassifier
+import com.krushna.divyadrishti.llm.IntentType
 
 import com.krushna.divyadrishti.face.recognition.FaceRecognitionFlow
 import kotlinx.coroutines.flow.first
@@ -66,7 +70,7 @@ private data class ObjectInfo(
 private data class Detection(val box: BoundingBox, val label: String, val confidence: Float)
 private data class BoundingBox(val x: Float, val y: Float, val w: Float, val h: Float)
 
-class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceCommandListener {
 
     private lateinit var imageView: ImageView
     private lateinit var resultText: TextView
@@ -103,7 +107,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var cameraStatusText: TextView
     private lateinit var intervalEditText: EditText
     private lateinit var autoModeSettingsCard: CardView
-
+    private lateinit var speechManager: SpeechManager
+    private lateinit var voiceButton: Button
     private lateinit var currencyInterpreter: Interpreter
     private lateinit var currencyLabels: List<String>
     private var isCurrencyDetectionEnabled = false
@@ -122,6 +127,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var autoCaptureInterval = 30000L // Default 30 seconds
 
     private val latestScene = mutableListOf<ObjectInfo>()
+    private lateinit var intentClassifier: IntentClassifier
 
     // Launcher for selecting an image from the gallery
     private val imagePickerLauncher =
@@ -163,6 +169,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         currencyToggleButton = findViewById(R.id.currencyToggleButton)
         connectionStatus = findViewById(R.id.connectionStatus)
         modeStatus = findViewById(R.id.modeStatus)
+        voiceButton = findViewById(R.id.voiceButton)
+        speechManager = SpeechManager(this, this)
+        intentClassifier = IntentClassifier()
 //        statusIndicator = findViewById(R.id.statusIndicator)
 //        cameraStatusIndicator = findViewById(R.id.cameraStatusIndicator)
 //        cameraStatusText = findViewById(R.id.cameraStatusText)
@@ -197,12 +206,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         ActivityCompat.requestPermissions(
             this,
-            arrayOf(
-                Manifest.permission.ACCESS_WIFI_STATE,
-                Manifest.permission.CHANGE_WIFI_STATE,
-                Manifest.permission.INTERNET
-            ),
-            1
+            arrayOf(Manifest.permission.RECORD_AUDIO),
+            100
         )
 
         loadModels()
@@ -223,7 +228,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
         }
+        voiceButton.setOnClickListener {
 
+            speechManager.startListening()
+
+        }
         connectButton.setOnClickListener { connectToESP32WiFi() }
         modeToggleButton.setOnClickListener { toggleCaptureMode() }
         captureButton.setOnClickListener { if (!isAutoMode) captureImageFromESP32() }
@@ -358,6 +367,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
         updateUIForMode()
+    }
+
+    override fun onCommandRecognized(command: String) {
+        val intent = intentClassifier.classify(command)
+        Toast.makeText(
+            this,
+            "Intent : $intent",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
+    override fun onError(error: String) {
+        Toast.makeText(
+            this,
+            error,
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun loadModels() {
@@ -948,12 +974,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        speechManager.destroy()
+
         tts.stop()
         tts.shutdown()
         yoloInterpreter.close()
         placesInterpreter.close()
         currencyInterpreter.close()
         handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
     }
 }
