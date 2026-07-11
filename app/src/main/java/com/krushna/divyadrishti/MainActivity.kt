@@ -53,6 +53,8 @@ import com.krushna.divyadrishti.speech.SpeechManager
 import com.krushna.divyadrishti.speech.VoiceCommandListener
 import com.krushna.divyadrishti.llm.IntentClassifier
 import com.krushna.divyadrishti.llm.IntentType
+import com.krushna.divyadrishti.router.FeatureRouter
+import com.krushna.divyadrishti.router.FeatureType
 
 import com.krushna.divyadrishti.face.recognition.FaceRecognitionFlow
 import kotlinx.coroutines.flow.first
@@ -128,6 +130,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
     private val latestScene = mutableListOf<ObjectInfo>()
     private lateinit var intentClassifier: IntentClassifier
+    private lateinit var featureRouter: FeatureRouter
 
     // Launcher for selecting an image from the gallery
     private val imagePickerLauncher =
@@ -172,6 +175,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         voiceButton = findViewById(R.id.voiceButton)
         speechManager = SpeechManager(this, this)
         intentClassifier = IntentClassifier()
+        featureRouter = FeatureRouter()
 //        statusIndicator = findViewById(R.id.statusIndicator)
 //        cameraStatusIndicator = findViewById(R.id.cameraStatusIndicator)
 //        cameraStatusText = findViewById(R.id.cameraStatusText)
@@ -371,9 +375,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
     override fun onCommandRecognized(command: String) {
         val intent = intentClassifier.classify(command)
+        val feature = featureRouter.route(intent)
         Toast.makeText(
             this,
-            "Intent : $intent",
+            "Feature : $feature",
             Toast.LENGTH_LONG
         ).show()
     }
