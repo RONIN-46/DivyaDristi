@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
+    android:background="@drawable/background_gradient"
     tools:context=".MainActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -51,7 +51,7 @@
                 android:layout_height="wrap_content"
                 android:layout_columnWeight="1"
                 android:layout_marginEnd="8dp"
-                app:cardBackgroundColor="#1E1E1E"
+                app:cardBackgroundColor="#B31E1E1E"
                 app:cardCornerRadius="8dp">
 
                 <LinearLayout
@@ -90,7 +90,7 @@
                 android:layout_height="wrap_content"
                 android:layout_columnWeight="1"
                 android:layout_marginStart="8dp"
-                app:cardBackgroundColor="#1E1E1E"
+                app:cardBackgroundColor="#B31E1E1E"
                 app:cardCornerRadius="8dp">
 
                 <LinearLayout
@@ -131,7 +131,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#1E1E1E"
+            app:cardBackgroundColor="#B31E1E1E"
             app:cardCornerRadius="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -169,7 +169,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#1E1E1E"
+            app:cardBackgroundColor="#B31E1E1E"
             app:cardCornerRadius="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -202,7 +202,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#1E1E1E"
+            app:cardBackgroundColor="#B31E1E1E"
             app:cardCornerRadius="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -229,7 +229,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#1E1E1E"
+            app:cardBackgroundColor="#B31E1E1E"
             app:cardCornerRadius="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -244,9 +244,11 @@
                 <ImageView
                     android:id="@+id/imageView"
                     android:layout_width="match_parent"
-                    android:layout_height="250dp"
-                    android:background="@android:color/black"
-                    android:scaleType="centerInside" />
+                    android:layout_height="200dp"
+                    android:layout_marginTop="16dp"
+                    android:background="@color/cardview_dark_background"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="ESP32 Camera Feed" />
 
                 <Button
                     android:id="@+id/captureButton"
@@ -268,17 +270,65 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Face Recognition Management Section -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/faceManagementCard"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="#B31E1E1E"
+            app:cardCornerRadius="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cameraFeedCard">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Face Recognition"
+                    android:textColor="@android:color/white"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/registerFaceButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="@android:color/holo_orange_dark"
+                    android:text="Register Face"
+                    android:textColor="@android:color/white" />
+
+                <Button
+                    android:id="@+id/manageFacesButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@android:color/holo_red_dark"
+                    android:text="Manage Registered Faces"
+                    android:textColor="@android:color/white" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
         <!-- Object Detection Section -->
         <androidx.cardview.widget.CardView
             android:id="@+id/objectDetectionCard"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#1E1E1E"
+            app:cardBackgroundColor="#B31E1E1E"
             app:cardCornerRadius="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/cameraFeedCard">
+            app:layout_constraintTop_toBottomOf="@id/faceManagementCard">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -293,6 +343,12 @@
                     android:backgroundTint="@android:color/holo_green_dark"
                     android:text="Detect Objects"
                     android:textColor="@android:color/white" />
+
+                <Button
+                    android:id="@+id/voiceButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Voice Command"/>
 
                 <Button
                     android:id="@+id/ocrButton"

@@ -55,14 +55,11 @@ import com.krushna.divyadrishti.llm.IntentClassifier
 import com.krushna.divyadrishti.llm.IntentType
 import com.krushna.divyadrishti.router.FeatureRouter
 import com.krushna.divyadrishti.router.FeatureType
-import android.widget.Toast
 
 import com.krushna.divyadrishti.face.recognition.FaceRecognitionFlow
 import kotlinx.coroutines.flow.first
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-
-
 
 
 private data class ObjectInfo(
@@ -86,8 +83,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var modeToggleButton: Button
     private lateinit var captureButton: Button
     private lateinit var ocrButton: Button
-
-    private lateinit var ocrManager: OCRManager
     private lateinit var pickButton: Button
 
     private lateinit var registerFaceButton: Button
@@ -120,9 +115,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var currencyLabels: List<String>
     private var isCurrencyDetectionEnabled = false
 
-    private var selectedImageUri: Uri? = null // This tracks if a gallery image is loaded
-
-//    private var originalBitmap: Bitmap? = null
     private val currencyInputSize = 640
     private val currencyConfidenceThreshold = 0.35f
 
@@ -141,27 +133,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var featureRouter: FeatureRouter
 
     // Launcher for selecting an image from the gallery
-    private val imagePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            selectedImageUri = it // Save the Uri for later use
-            imageView.setImageURI(it) // Show it on screen
-
-            // Call OCR directly using the URI (Fixes the rotation/hardware bitmap issue)
-            ocrManager.recognizeFromUri(
-                context = this,
-                uri = it,
-                onResult = { text ->
-                    speakAndToast(text)
-                    ocrResultText.text = text},
-                onError = { e -> speakAndToast("Read failed: ${e.message}") }
-            )
+    private val imagePickerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val imageUri: Uri? = result.data?.data
+                if (imageUri != null) {
+                    try {
+                        val inputStream = contentResolver.openInputStream(imageUri)
+                        val bitmap = BitmapFactory.decodeStream(inputStream)
+                        imageView.setImageBitmap(bitmap)
+                        processAndSpeak(bitmap) // Process image immediately
+                        statusText.text = "Gallery image loaded."
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        ocrManager = OCRManager()
+
         // Initialize UI components
         imageView = findViewById(R.id.imageView)
         resultText = findViewById(R.id.resultText)
@@ -250,7 +243,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
         pickButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-            imagePickerLauncher.launch("image/*")
+            imagePickerLauncher.launch(intent)
         }
 
         registerFaceButton.setOnClickListener {
@@ -363,31 +356,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         }
 
         ocrButton.setOnClickListener {
-            if (selectedImageUri != null) {
-                // CASE 1: Use URI if image was picked from Gallery
-                ocrManager.recognizeFromUri(
-                    context = this,
-                    uri = selectedImageUri!!,
-                    onResult = { text -> speakAndToast(text) },
-                    onError = { e -> speakAndToast("Error: ${e.message}") }
-                )
+
+            if (::originalBitmap.isInitialized) {
+
+                runOCR(originalBitmap)
+
             } else {
-                // CASE 2: Use Bitmap if image was captured from ESP32
-                val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
-                if (bitmap != null) {
-                    ocrManager.recognize(
-                        bitmap = bitmap,
-                        onResult = { text ->
-                            speakAndToast(text)
-                            ocrResultText.text = text},
-                        onError = { e -> speakAndToast("Error: ${e.message}") }
-                    )
-                } else {
-                    speakAndToast("Please capture or select an image first.")
-                }
+
+                Toast.makeText(
+                    this,
+                    "Capture an image first",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
-
         updateUIForMode()
     }
 
@@ -507,8 +489,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     inputStream.close()
                     runOnUiThread {
 
-                        selectedImageUri = null
-                        ocrResultText.text = ""
                         // Save the original captured image
                         originalBitmap = bitmap
 
@@ -1008,19 +988,5 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         currencyInterpreter.close()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
-    }
-
-    private fun speakAndToast(message: String) {
-        runOnUiThread {
-            if (message.isBlank()) return@runOnUiThread
-
-            // Show the message on screen
-            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-
-            // Speak the message for the user
-            if (::tts.isInitialized) {
-                tts.speak(message, TextToSpeech.QUEUE_FLUSH, null, null)
-            }
-        }
     }
 }
