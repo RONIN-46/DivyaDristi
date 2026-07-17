@@ -1,4 +1,11 @@
 package com.krushna.divyadrishti.model
 
-class SceneContext {
-}
+data class SceneContext(
+
+    var sceneName: String = "",
+
+    var confidence: Float = 0f,
+
+    var objects: MutableList<DetectedObject> = mutableListOf()
+
+)

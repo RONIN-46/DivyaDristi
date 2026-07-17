@@ -1,4 +1,7 @@
 package com.krushna.divyadrishti.model
 
-class CurrencyContext {
-}
+data class CurrencyContext(
+
+    var notes: MutableList<String> = mutableListOf()
+
+)

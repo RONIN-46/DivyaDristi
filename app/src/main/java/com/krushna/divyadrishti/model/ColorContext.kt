@@ -1,4 +1,7 @@
 package com.krushna.divyadrishti.model
 
-class ColorContext {
-}
+data class ColorContext(
+
+    var colors: MutableMap<String, String> = mutableMapOf()
+
+)
