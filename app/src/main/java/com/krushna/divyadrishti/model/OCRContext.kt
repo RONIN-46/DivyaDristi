@@ -1,4 +1,9 @@
 package com.krushna.divyadrishti.model
 
-class OCRContext {
-}
+data class OCRContext(
+
+    var text: String = "",
+
+    var available: Boolean = false
+
+)

@@ -1,4 +1,7 @@
 package com.krushna.divyadrishti.model
 
-class FaceContext {
-}
+data class FaceContext(
+
+    var persons: MutableList<String> = mutableListOf()
+
+)
