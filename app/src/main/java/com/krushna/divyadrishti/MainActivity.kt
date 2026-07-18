@@ -82,6 +82,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var originalBitmap: Bitmap
     private lateinit var debugText: TextView
     private lateinit var detectButton: Button
+    private lateinit var detectColorButton: Button
     private lateinit var connectButton: Button
     private lateinit var modeToggleButton: Button
     private lateinit var captureButton: Button
@@ -167,6 +168,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         resultText = findViewById(R.id.resultText)
         debugText = findViewById(R.id.debugText)
         detectButton = findViewById(R.id.detectButton)
+        detectColorButton = findViewById(R.id.detectColorButton)
         connectButton = findViewById(R.id.connectButton)
         modeToggleButton = findViewById(R.id.modeToggleButton)
         captureButton = findViewById(R.id.captureButton)
@@ -362,6 +364,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
 
+        detectColorButton.setOnClickListener {
+            val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
+            if (bitmap == null) {
+                speakAndToast("Please capture or select an image first.")
+            } else {
+                detectColorForCommand(bitmap, "")
+            }
+        }
+
         ocrButton.setOnClickListener {
             if (selectedImageUri != null) {
                 // CASE 1: Use URI if image was picked from Gallery
@@ -394,12 +405,53 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     override fun onCommandRecognized(command: String) {
         val intent = intentClassifier.classify(command)
         val feature = featureRouter.route(intent)
-        Toast.makeText(
-            this,
-            "Feature : $feature",
-            Toast.LENGTH_LONG
-        ).show()
+        if (feature != FeatureType.COLOR) {
+            Toast.makeText(this, "Feature: $feature", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
+        if (bitmap == null) {
+            speakAndToast("Please capture or select an image first.")
+            return
+        }
+        detectColorForCommand(bitmap, command)
     }
+
+    private fun detectColorForCommand(bitmap: Bitmap, command: String) {
+        thread {
+            runOnUiThread { statusText.text = "Detecting color..." }
+            val response = if (command.isBlank()) {
+                colorResponse(ColorDetector.analyze(bitmap))
+            } else {
+                val detections = detectObjects(bitmap)
+                val normalizedCommand = command.lowercase(Locale.getDefault())
+                val matchingObject = detections.firstOrNull { objectInfo ->
+                    val label = objectInfo.label.lowercase(Locale.getDefault())
+                    normalizedCommand.contains(label) ||
+                            normalizedCommand.contains(label.removeSuffix("s"))
+                }
+                when {
+                    matchingObject != null ->
+                        "The ${matchingObject.label} appears ${matchingObject.color.lowercase(Locale.getDefault())}."
+                    detections.isNotEmpty() -> colorResponse(ColorDetector.analyze(bitmap))
+                    else -> "I could not find an object clearly enough to determine its color."
+                }
+            }
+            runOnUiThread {
+                resultText.text = response
+                statusText.text = "Color detection complete."
+                speakAndToast(response)
+            }
+        }
+    }
+
+    private fun colorResponse(result: ColorDetector.ColorResult): String =
+        if (result.name == "Unknown") {
+            "I could not determine the color clearly."
+        } else {
+            "The color appears ${result.name.lowercase(Locale.getDefault())}."
+        }
 
     override fun onError(error: String) {
         Toast.makeText(
@@ -903,9 +955,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     private fun summarizeEntities(detections: List<ObjectInfo>): String {
-        val formatList = { map: Map<String, Int> ->
-            val items =
-                map.map { (label, count) -> if (count > 1) "$count ${label}s" else "a $label" }
+        val formatList = { objects: List<ObjectInfo> ->
+            val items = objects.map { objectInfo ->
+                val color = objectInfo.color.lowercase(Locale.getDefault())
+                when {
+                    objectInfo.label.equals("person", ignoreCase = true) && color != "unknown" ->
+                        "a person wearing predominantly $color"
+                    color != "unknown" -> "a $color ${objectInfo.label}"
+                    else -> "a ${objectInfo.label}"
+                }
+            }
             when {
                 items.isEmpty() -> ""
                 items.size == 1 -> items.first()
@@ -913,13 +972,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 else -> items.dropLast(1).joinToString(", ") + ", and " + items.last()
             }
         }
-        val left = formatList(detections.filter { it.xCenterNorm < 0.33f }.groupingBy { it.label }
-            .eachCount())
-        val center =
-            formatList(detections.filter { it.xCenterNorm in 0.33f..0.67f }.groupingBy { it.label }
-                .eachCount())
-        val right = formatList(detections.filter { it.xCenterNorm > 0.67f }.groupingBy { it.label }
-            .eachCount())
+        val left = formatList(detections.filter { it.xCenterNorm < 0.33f })
+        val center = formatList(detections.filter { it.xCenterNorm in 0.33f..0.67f })
+        val right = formatList(detections.filter { it.xCenterNorm > 0.67f })
         val parts = mutableListOf<String>()
         if (center.isNotEmpty()) parts.add("in front of you, there is $center")
         if (left.isNotEmpty()) parts.add("to your left, I see $left")
