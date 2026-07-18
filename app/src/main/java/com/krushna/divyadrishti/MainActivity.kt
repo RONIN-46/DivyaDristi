@@ -382,10 +382,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     override fun onCommandRecognized(command: String) {
         val intent = intentClassifier.classify(command)
         val feature = featureRouter.route(intent)
-        Log.d(
-            "UNIFIED_CONTEXT",
-            ContextManager.getContext().toString()
-        )
         Toast.makeText(
             this,
             "Feature : $feature",
