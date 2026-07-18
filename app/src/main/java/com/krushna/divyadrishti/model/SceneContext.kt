@@ -6,6 +6,8 @@ data class SceneContext(
 
     var confidence: Float = 0f,
 
+    var description: String = "",
+
     var objects: MutableList<DetectedObject> = mutableListOf()
 
 )
