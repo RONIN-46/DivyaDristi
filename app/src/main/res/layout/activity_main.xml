@@ -345,6 +345,15 @@
                     android:textColor="@android:color/white" />
 
                 <Button
+                    android:id="@+id/detectColorButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@android:color/holo_blue_dark"
+                    android:text="Detect Color"
+                    android:textColor="@android:color/white" />
+
+                <Button
                     android:id="@+id/voiceButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
