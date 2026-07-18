@@ -55,11 +55,17 @@ import com.krushna.divyadrishti.llm.IntentClassifier
 import com.krushna.divyadrishti.llm.IntentType
 import com.krushna.divyadrishti.router.FeatureRouter
 import com.krushna.divyadrishti.router.FeatureType
-
+import com.krushna.divyadrishti.model.FaceContext
+import com.krushna.divyadrishti.model.ContextManager
+import com.krushna.divyadrishti.model.SceneContext
+import com.krushna.divyadrishti.model.DetectedObject
+import com.krushna.divyadrishti.model.ColorContext
+import com.krushna.divyadrishti.model.CurrencyContext
 import com.krushna.divyadrishti.face.recognition.FaceRecognitionFlow
 import kotlinx.coroutines.flow.first
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import com.krushna.divyadrishti.model.OCRContext
 
 
 private data class ObjectInfo(
@@ -376,6 +382,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     override fun onCommandRecognized(command: String) {
         val intent = intentClassifier.classify(command)
         val feature = featureRouter.route(intent)
+        Log.d(
+            "UNIFIED_CONTEXT",
+            ContextManager.getContext().toString()
+        )
         Toast.makeText(
             this,
             "Feature : $feature",
@@ -502,30 +512,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                         // Send the original image for processing
                         processAndSpeak(originalBitmap)
                     }
-//                    runOnUiThread {
-//
-//                        imageView.setImageBitmap(processedBitmap)
-//
-//                        statusText.text =
-//                            if (isAutoMode) "Auto mode: Image captured"
-//                            else "Manual capture successful"
-//
-//                        OCRManager().recognize(
-//                            processedBitmap,
-//                            onResult = { text ->
-//
-//                                resultText.text = text
-//
-//                                if (text.isNotBlank()) {
-//                                    speakText(text)
-//                                }
-//                            },
-//                            onError = {
-//
-//                                resultText.text = "OCR Failed"
-//                            }
-//                        )
-//                    }
 
                 } else {
                     runOnUiThread {
@@ -561,6 +547,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                         onResult = { faceResult ->
 
+                            val recognizedPersons = mutableListOf<String>()
+
+                            if (
+                                faceResult != "No face detected" &&
+                                faceResult != "Unknown person"
+                            ) {
+                                recognizedPersons.add(faceResult)
+                            }
+
+                            ContextManager.updateFaces(
+
+                                FaceContext(
+
+                                    persons = recognizedPersons
+
+                                )
+
+                            )
+
                             val finalCaption = when (faceResult) {
 
                                 "No face detected" ->
@@ -583,6 +588,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                         },
 
                         onError = { error ->
+
+                            ContextManager.updateFaces(
+                                FaceContext()
+                            )
 
                             Log.e(
                                 "FACE_RECOGNITION",
@@ -630,16 +639,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             processedBitmap,
 
             onResult = { text ->
-
+                ContextManager.updateOCR(
+                    OCRContext(
+                        text = text,
+                        available = text.isNotBlank()
+                    )
+                )
                 runOnUiThread {
-
                     ocrResultText.text = text
-
                 }
-
             },
-
             onError = {
+
+                ContextManager.updateOCR(
+
+                    OCRContext()
+
+                )
 
                 runOnUiThread {
 
@@ -648,9 +664,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 }
 
             }
-
         )
-
     }
 
     private fun toggleCaptureMode() {
@@ -718,10 +732,40 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         }
 
         val objectSummary =
-            if (detections.isNotEmpty()) summarizeEntities(detections) else "I don't see any other major objects."
-        return "$sceneDescription $objectSummary"
-    }
+            if (detections.isNotEmpty()) summarizeEntities(detections)
+            else "I don't see any other major objects."
 
+        val finalDescription = "$sceneDescription $objectSummary"
+
+        val detectedObjects = detections.map {
+            DetectedObject(
+                label = it.label,
+                confidence = 1.0f,
+                position = getObjectPosition(it.xCenterNorm),
+                color = it.color
+            )
+        }.toMutableList()
+
+        val detectedColors = mutableMapOf<String, String>()
+        detections.forEach {
+            detectedColors[it.label] = it.color
+        }
+        ContextManager.updateColors(
+            ColorContext(
+                colors = detectedColors
+            )
+        )
+
+        ContextManager.updateScene(
+            SceneContext(
+                sceneName = cleanScene,
+                confidence = confidence,
+                description = finalDescription,
+                objects = detectedObjects
+            )
+        )
+        return finalDescription
+    }
     private fun detectCurrency(bitmap: Bitmap): String {
         try {
             val resized =
@@ -765,11 +809,32 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             val finalDetections = nonMaxSuppression(currencyDetections, 0.5f)
             if (finalDetections.isNotEmpty()) {
                 val counts = finalDetections.groupingBy { it.label }.eachCount()
-                return counts.map { (l, c) -> if (c > 1) "$c notes of $l" else "$l note" }
-                    .joinToString(", ") + " detected."
+                val detectedNotes = mutableListOf<String>()
+                counts.forEach { (label, count) ->
+                    repeat(count) {
+                        detectedNotes.add(label)
+                    }
+                }
+                ContextManager.updateCurrency(
+                    CurrencyContext(
+                        notes = detectedNotes
+                    )
+                )
+                return counts.map { (label, count) ->
+                    if (count > 1)
+                        "$count notes of $label"
+                    else
+                        "$label note"
+                }.joinToString(", ") + " detected."
             }
+            ContextManager.updateCurrency(
+                CurrencyContext()
+            )
             return ""
         } catch (e: Exception) {
+            ContextManager.updateCurrency(
+                CurrencyContext()
+            )
             return ""
         }
     }
@@ -905,6 +970,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         if (left.isNotEmpty()) parts.add("to your left, I see $left")
         if (right.isNotEmpty()) parts.add("and to your right is $right")
         return if (parts.isEmpty()) "" else parts.joinToString(", ") + "."
+    }
+
+    private fun getObjectPosition(xCenter: Float): String {
+        return when {
+            xCenter < 0.33f -> "Left"
+            xCenter < 0.67f -> "Center"
+            else -> "Right"
+        }
     }
 
     private fun showFaceRegistrationDialog(bitmap: Bitmap) {
