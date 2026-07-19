@@ -14,6 +14,14 @@ class FeatureExecutor {
             FeatureType.SCENE ->
                 context.scene.description
 
+            FeatureType.OBJECT ->
+                if (context.scene.objects.isNotEmpty())
+                    context.scene.objects.joinToString("\n") {
+                        "${it.label} (${it.position})"
+                    }
+                else
+                    "No objects detected."
+
             FeatureType.OCR ->
                 if (context.ocr.available)
                     context.ocr.text
@@ -40,8 +48,8 @@ class FeatureExecutor {
                 else
                     "No currency detected."
 
-            FeatureType.UNKNOWN ->
-                "I didn't understand your request."
+            FeatureType.GENERAL ->
+                "Please ask about the scene, objects, text, faces, colors or currency."
         }
     }
 }
