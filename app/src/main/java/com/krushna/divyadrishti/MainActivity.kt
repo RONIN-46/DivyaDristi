@@ -61,6 +61,8 @@ import com.krushna.divyadrishti.model.SceneContext
 import com.krushna.divyadrishti.model.DetectedObject
 import com.krushna.divyadrishti.model.ColorContext
 import com.krushna.divyadrishti.model.CurrencyContext
+import android.widget.Toast
+
 import com.krushna.divyadrishti.face.recognition.FaceRecognitionFlow
 import kotlinx.coroutines.flow.first
 import androidx.lifecycle.lifecycleScope
@@ -86,10 +88,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var originalBitmap: Bitmap
     private lateinit var debugText: TextView
     private lateinit var detectButton: Button
+    private lateinit var detectColorButton: Button
     private lateinit var connectButton: Button
     private lateinit var modeToggleButton: Button
     private lateinit var captureButton: Button
     private lateinit var ocrButton: Button
+
+    private lateinit var ocrManager: OCRManager
     private lateinit var pickButton: Button
 
     private lateinit var registerFaceButton: Button
@@ -122,6 +127,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var currencyLabels: List<String>
     private var isCurrencyDetectionEnabled = false
 
+    private var selectedImageUri: Uri? = null // This tracks if a gallery image is loaded
+
+    //    private var originalBitmap: Bitmap? = null
     private val currencyInputSize = 640
     private val currencyConfidenceThreshold = 0.35f
 
@@ -142,33 +150,33 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private val featureExecutor = FeatureExecutor()
 
     // Launcher for selecting an image from the gallery
-    private val imagePickerLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val imageUri: Uri? = result.data?.data
-                if (imageUri != null) {
-                    try {
-                        val inputStream = contentResolver.openInputStream(imageUri)
-                        val bitmap = BitmapFactory.decodeStream(inputStream)
-                        imageView.setImageBitmap(bitmap)
-                        processAndSpeak(bitmap) // Process image immediately
-                        statusText.text = "Gallery image loaded."
-                    } catch (e: Exception) {
-                        Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
+    private val imagePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            selectedImageUri = it // Save the Uri for later use
+            imageView.setImageURI(it) // Show it on screen
+
+            // Call OCR directly using the URI (Fixes the rotation/hardware bitmap issue)
+            ocrManager.recognizeFromUri(
+                context = this,
+                uri = it,
+                onResult = { text ->
+                    speakAndToast(text)
+                    ocrResultText.text = text},
+                onError = { e -> speakAndToast("Read failed: ${e.message}") }
+            )
         }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+        ocrManager = OCRManager()
         // Initialize UI components
         imageView = findViewById(R.id.imageView)
         resultText = findViewById(R.id.resultText)
         debugText = findViewById(R.id.debugText)
         detectButton = findViewById(R.id.detectButton)
+        detectColorButton = findViewById(R.id.detectColorButton)
         connectButton = findViewById(R.id.connectButton)
         modeToggleButton = findViewById(R.id.modeToggleButton)
         captureButton = findViewById(R.id.captureButton)
@@ -252,7 +260,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
         pickButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-            imagePickerLauncher.launch(intent)
+            imagePickerLauncher.launch("image/*")
         }
 
         registerFaceButton.setOnClickListener {
@@ -364,19 +372,38 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
 
-        ocrButton.setOnClickListener {
-
-            if (::originalBitmap.isInitialized) {
-
-                runOCR(originalBitmap)
-
+        detectColorButton.setOnClickListener {
+            val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
+            if (bitmap == null) {
+                speakAndToast("Please capture or select an image first.")
             } else {
+                detectColorForCommand(bitmap, "")
+            }
+        }
 
-                Toast.makeText(
-                    this,
-                    "No text detected",
-                    Toast.LENGTH_SHORT
-                ).show()
+        ocrButton.setOnClickListener {
+            if (selectedImageUri != null) {
+                // CASE 1: Use URI if image was picked from Gallery
+                ocrManager.recognizeFromUri(
+                    context = this,
+                    uri = selectedImageUri!!,
+                    onResult = { text -> speakAndToast(text) },
+                    onError = { e -> speakAndToast("Error: ${e.message}") }
+                )
+            } else {
+                // CASE 2: Use Bitmap if image was captured from ESP32
+                val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
+                if (bitmap != null) {
+                    ocrManager.recognize(
+                        bitmap = bitmap,
+                        onResult = { text ->
+                            speakAndToast(text)
+                            ocrResultText.text = text},
+                        onError = { e -> speakAndToast("Error: ${e.message}") }
+                    )
+                } else {
+                    speakAndToast("Please capture or select an image first.")
+                }
             }
         }
         updateUIForMode()
@@ -385,15 +412,64 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     override fun onCommandRecognized(command: String) {
 
         val intent = intentClassifier.classify(command)
-
         val feature = featureRouter.route(intent)
 
+        // Keep teammate's voice color detection
+        if (feature == FeatureType.COLOR) {
+
+            val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
+
+            if (bitmap == null) {
+                speakAndToast("Please capture or select an image first.")
+                return
+            }
+
+            detectColorForCommand(bitmap, command)
+            return
+        }
+
+        // Our FeatureExecutor for all other features
         val response = featureExecutor.execute(feature)
 
         resultText.text = response
 
         speakText(response)
     }
+
+    private fun detectColorForCommand(bitmap: Bitmap, command: String) {
+        thread {
+            runOnUiThread { statusText.text = "Detecting color..." }
+            val response = if (command.isBlank()) {
+                colorResponse(ColorDetector.analyze(bitmap))
+            } else {
+                val detections = detectObjects(bitmap)
+                val normalizedCommand = command.lowercase(Locale.getDefault())
+                val matchingObject = detections.firstOrNull { objectInfo ->
+                    val label = objectInfo.label.lowercase(Locale.getDefault())
+                    normalizedCommand.contains(label) ||
+                            normalizedCommand.contains(label.removeSuffix("s"))
+                }
+                when {
+                    matchingObject != null ->
+                        "The ${matchingObject.label} appears ${matchingObject.color.lowercase(Locale.getDefault())}."
+                    detections.isNotEmpty() -> colorResponse(ColorDetector.analyze(bitmap))
+                    else -> "I could not find an object clearly enough to determine its color."
+                }
+            }
+            runOnUiThread {
+                resultText.text = response
+                statusText.text = "Color detection complete."
+                speakAndToast(response)
+            }
+        }
+    }
+
+    private fun colorResponse(result: ColorDetector.ColorResult): String =
+        if (result.name == "Unknown") {
+            "I could not determine the color clearly."
+        } else {
+            "The color appears ${result.name.lowercase(Locale.getDefault())}."
+        }
 
     override fun onError(error: String) {
         Toast.makeText(
@@ -501,6 +577,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     inputStream.close()
                     runOnUiThread {
 
+                        selectedImageUri = null
+                        ocrResultText.text = ""
                         // Save the original captured image
                         originalBitmap = bitmap
 
@@ -950,9 +1028,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     private fun summarizeEntities(detections: List<ObjectInfo>): String {
-        val formatList = { map: Map<String, Int> ->
-            val items =
-                map.map { (label, count) -> if (count > 1) "$count ${label}s" else "a $label" }
+        val formatList = { objects: List<ObjectInfo> ->
+            val items = objects.map { objectInfo ->
+                val color = objectInfo.color.lowercase(Locale.getDefault())
+                when {
+                    objectInfo.label.equals("person", ignoreCase = true) && color != "unknown" ->
+                        "a person wearing predominantly $color"
+                    color != "unknown" -> "a $color ${objectInfo.label}"
+                    else -> "a ${objectInfo.label}"
+                }
+            }
             when {
                 items.isEmpty() -> ""
                 items.size == 1 -> items.first()
@@ -960,13 +1045,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 else -> items.dropLast(1).joinToString(", ") + ", and " + items.last()
             }
         }
-        val left = formatList(detections.filter { it.xCenterNorm < 0.33f }.groupingBy { it.label }
-            .eachCount())
-        val center =
-            formatList(detections.filter { it.xCenterNorm in 0.33f..0.67f }.groupingBy { it.label }
-                .eachCount())
-        val right = formatList(detections.filter { it.xCenterNorm > 0.67f }.groupingBy { it.label }
-            .eachCount())
+        val left = formatList(detections.filter { it.xCenterNorm < 0.33f })
+        val center = formatList(detections.filter { it.xCenterNorm in 0.33f..0.67f })
+        val right = formatList(detections.filter { it.xCenterNorm > 0.67f })
         val parts = mutableListOf<String>()
         if (center.isNotEmpty()) parts.add("in front of you, there is $center")
         if (left.isNotEmpty()) parts.add("to your left, I see $left")
@@ -1063,5 +1144,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         currencyInterpreter.close()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
+    }
+
+    private fun speakAndToast(message: String) {
+        runOnUiThread {
+            if (message.isBlank()) return@runOnUiThread
+
+            // Show the message on screen
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+
+            // Speak the message for the user
+            if (::tts.isInitialized) {
+                tts.speak(message, TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+        }
     }
 }
