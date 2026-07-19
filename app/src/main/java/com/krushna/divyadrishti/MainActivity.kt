@@ -66,6 +66,7 @@ import kotlinx.coroutines.flow.first
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import com.krushna.divyadrishti.model.OCRContext
+import com.krushna.divyadrishti.executor.FeatureExecutor
 
 
 private data class ObjectInfo(
@@ -137,6 +138,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private val latestScene = mutableListOf<ObjectInfo>()
     private lateinit var intentClassifier: IntentClassifier
     private lateinit var featureRouter: FeatureRouter
+
+    private val featureExecutor = FeatureExecutor()
 
     // Launcher for selecting an image from the gallery
     private val imagePickerLauncher =
@@ -371,7 +374,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                 Toast.makeText(
                     this,
-                    "Capture an image first",
+                    "No text detected",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -380,13 +383,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     override fun onCommandRecognized(command: String) {
+
         val intent = intentClassifier.classify(command)
+
         val feature = featureRouter.route(intent)
-        Toast.makeText(
-            this,
-            "Feature : $feature",
-            Toast.LENGTH_LONG
-        ).show()
+
+        val response = featureExecutor.execute(feature)
+
+        resultText.text = response
+
+        speakText(response)
     }
 
     override fun onError(error: String) {
