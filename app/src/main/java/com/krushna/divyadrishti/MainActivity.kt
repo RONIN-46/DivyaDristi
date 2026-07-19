@@ -55,6 +55,7 @@ import com.krushna.divyadrishti.llm.IntentClassifier
 import com.krushna.divyadrishti.llm.IntentType
 import com.krushna.divyadrishti.router.FeatureRouter
 import com.krushna.divyadrishti.router.FeatureType
+import com.krushna.divyadrishti.llm.PromptBuilder
 import com.krushna.divyadrishti.model.FaceContext
 import com.krushna.divyadrishti.model.ContextManager
 import com.krushna.divyadrishti.model.SceneContext
@@ -428,12 +429,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             return
         }
 
-        // Our FeatureExecutor for all other features
-        val response = featureExecutor.execute(feature)
-
-        resultText.text = response
-
-        speakText(response)
+        // Below is the working code commented for LLM promt response
+        //val response = featureExecutor.execute(feature)
+        //resultText.text = response
+        //speakText(response)
+        val prompt = PromptBuilder.build(command)
+        Log.d("PROMPT", prompt)
+        resultText.text = prompt
     }
 
     private fun detectColorForCommand(bitmap: Bitmap, command: String) {
