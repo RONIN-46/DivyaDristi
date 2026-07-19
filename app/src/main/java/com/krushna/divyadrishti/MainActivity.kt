@@ -126,6 +126,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var voiceButton: Button
     private lateinit var currencyInterpreter: Interpreter
     private lateinit var currencyLabels: List<String>
+    private lateinit var llmManager: LLMManager
     private var isCurrencyDetectionEnabled = false
 
     private var selectedImageUri: Uri? = null // This tracks if a gallery image is loaded
@@ -171,6 +172,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        llmManager = LLMManager(this)
+        llmManager.initialize()
         ocrManager = OCRManager()
         // Initialize UI components
         imageView = findViewById(R.id.imageView)
@@ -435,7 +438,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         //speakText(response)
         val prompt = PromptBuilder.build(command)
         Log.d("PROMPT", prompt)
-        resultText.text = prompt
+        val response = llmManager.generate(prompt)
+        resultText.text = response
+        speakText(response)
     }
 
     private fun detectColorForCommand(bitmap: Bitmap, command: String) {

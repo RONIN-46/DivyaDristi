@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation("androidx.activity:activity-ktx:1.10.1")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
     ksp(libs.androidx.room.compiler)
 
 
