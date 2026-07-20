@@ -51,6 +51,7 @@ import com.krushna.divyadrishti.face.registration.FaceRegistrationFlow
 import com.krushna.divyadrishti.face.registration.FaceRegistrationManager
 import com.krushna.divyadrishti.speech.SpeechManager
 import com.krushna.divyadrishti.speech.VoiceCommandListener
+import com.krushna.divyadrishti.llm.LLMManager
 import com.krushna.divyadrishti.llm.IntentClassifier
 import com.krushna.divyadrishti.llm.IntentType
 import com.krushna.divyadrishti.router.FeatureRouter
@@ -71,14 +72,12 @@ import kotlinx.coroutines.launch
 import com.krushna.divyadrishti.model.OCRContext
 import com.krushna.divyadrishti.executor.FeatureExecutor
 
-
 private data class ObjectInfo(
     val label: String,
     val color: String,
     val xCenterNorm: Float,
     val box: BoundingBox
 )
-
 private data class Detection(val box: BoundingBox, val label: String, val confidence: Float)
 private data class BoundingBox(val x: Float, val y: Float, val w: Float, val h: Float)
 

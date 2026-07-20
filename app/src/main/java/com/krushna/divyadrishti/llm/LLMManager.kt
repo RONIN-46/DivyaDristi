@@ -1,23 +1,33 @@
 package com.krushna.divyadrishti.llm
 
 import android.content.Context
-import com.krushna.divyadrishti.llm.engine.ModelLoader
 
 class LLMManager(
-    context: Context
+    private val context: Context
 ) {
 
-    private val modelLoader = ModelLoader(context)
+    var state = LLMState.IDLE
+        private set
 
     fun initialize() {
+        state = LLMState.LOADING
 
-        // Model will be loaded here later
+        // llama.cpp initialization will be added here
 
+        state = LLMState.READY
     }
 
-    fun generate(prompt: String): String {
+    fun generate(
+        prompt: String,
+        callback: LLMCallback
+    ) {
 
-        return "LLM not integrated yet."
+        state = LLMState.GENERATING
 
+        // llama.cpp generation will be added later
+
+        callback.onComplete("LLM placeholder response")
+
+        state = LLMState.READY
     }
 }
