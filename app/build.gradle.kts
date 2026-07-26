@@ -8,9 +8,16 @@ plugins {
 android {
     namespace = "com.krushna.divyadrishti"
     compileSdk = 36
+    ndkVersion = "30.0.14904198"
 
     androidResources {
         noCompress.add("tflite")
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
     }
 
     defaultConfig {
@@ -21,6 +28,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags += ""
+            }
+        }
     }
 
 

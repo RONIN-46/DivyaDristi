@@ -71,6 +71,10 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import com.krushna.divyadrishti.model.OCRContext
 import com.krushna.divyadrishti.executor.FeatureExecutor
+import com.krushna.divyadrishti.llm.LLMCallback
+import com.krushna.divyadrishti.llm.LLMNative
+import com.krushna.divyadrishti.llm.ModelManager
+import java.io.File
 
 private data class ObjectInfo(
     val label: String,
@@ -171,6 +175,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        Log.d("LLM", LLMNative.stringFromJNI())
+
         llmManager = LLMManager(this)
         llmManager.initialize()
         ocrManager = OCRManager()
@@ -384,6 +391,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
 
+        try {
+            Log.d("MODEL", "Before getModelPath")
+
+            val modelPath = ModelManager.getModelPath(this)
+
+            Log.d("MODEL", "Path = $modelPath")
+
+            val file = File(modelPath)
+
+            Log.d(
+                "MODEL",
+                "Exists=${file.exists()} Size=${file.length()}"
+            )
+        } catch (e: Exception) {
+            Log.e("MODEL", "ModelManager failed", e)
+        }
+
         ocrButton.setOnClickListener {
             if (selectedImageUri != null) {
                 // CASE 1: Use URI if image was picked from Gallery
@@ -437,9 +461,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         //speakText(response)
         val prompt = PromptBuilder.build(command)
         Log.d("PROMPT", prompt)
-        val response = llmManager.generate(prompt)
-        resultText.text = response
-        speakText(response)
+
+        llmManager.generate(prompt, object : LLMCallback {
+
+            override fun onToken(token: String) {
+                // We'll use this later for streaming llama.cpp output.
+                // For now, leave it empty.
+            }
+
+            override fun onComplete(response: String) {
+                runOnUiThread {
+                    resultText.text = response
+                    speakText(response)
+                }
+            }
+
+            override fun onError(message: String) {
+                runOnUiThread {
+                    resultText.text = message
+                    speakText(message)
+                }
+            }
+        })
     }
 
     private fun detectColorForCommand(bitmap: Bitmap, command: String) {
