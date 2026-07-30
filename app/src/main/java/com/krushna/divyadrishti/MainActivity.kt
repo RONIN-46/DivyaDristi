@@ -176,7 +176,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        Log.d("LLM", LLMNative.stringFromJNI())
+        val modelPath = ModelManager.getModelPath(this)
+
+        Log.d("MODEL", modelPath)
+
+        val success = LLMNative.loadModel(modelPath)
+
+        Log.d("LLM", "Loaded = $success")
 
         llmManager = LLMManager(this)
         llmManager.initialize()
