@@ -1,69 +1,72 @@
 package com.krushna.divyadrishti.llm
 
-import com.krushna.divyadrishti.model.ContextManager
+import com.krushna.divyadrishti.model.UnifiedContext
 
 object PromptBuilder {
 
-    fun build(userQuestion: String): String {
+    fun build(
+        command: String,
+        context: UnifiedContext
+    ): String {
 
-        val context = ContextManager.getContext()
+        val scene = context.scene
 
-        return buildString {
+        val faces = context.faces.persons.joinToString(", ")
 
-            appendLine("Scene:")
-            appendLine(context.scene.description)
-            appendLine()
+        val objects =
+            scene.objects.joinToString("\n") {
 
-            appendLine("Objects:")
-
-            if (context.scene.objects.isEmpty()) {
-
-                appendLine("None")
-
-            } else {
-
-                context.scene.objects.forEach {
-
-                    appendLine(
-                        "- ${it.label}, Color: ${it.color}, Position: ${it.position}"
-                    )
-
-                }
+                "- ${it.label} (${it.position})"
 
             }
 
-            appendLine()
+        val colors =
+            context.colors.colors.entries.joinToString("\n") {
 
-            appendLine("Recognized Faces:")
+                "- ${it.key}: ${it.value}"
 
-            if (context.faces.persons.isEmpty())
-                appendLine("None")
-            else
-                appendLine(context.faces.persons.joinToString())
+            }
 
-            appendLine()
-
-            appendLine("Detected Text:")
-
-            if (context.ocr.available)
-                appendLine(context.ocr.text)
-            else
-                appendLine("None")
-
-            appendLine()
-
-            appendLine("Detected Currency:")
-
+        val currency =
             if (context.currency.notes.isEmpty())
-                appendLine("None")
+                "None"
             else
-                appendLine(context.currency.notes.joinToString())
+                context.currency.notes.joinToString(", ")
 
-            appendLine()
+        val ocr =
+            if (context.ocr.available)
+                context.ocr.text
+            else
+                "None"
 
-            appendLine("User Question:")
+        return """
+You are Drishti.
 
-            appendLine(userQuestion)
-        }
+Current Scene
+
+Location:
+${scene.sceneName}
+
+Objects:
+$objects
+
+Recognized People:
+${if (faces.isBlank()) "None" else faces}
+
+Colors:
+${if (colors.isBlank()) "None" else colors}
+
+Currency:
+$currency
+
+Detected Text:
+$ocr
+
+User Question:
+$command
+
+Answer only using the available information.
+If information is unavailable, clearly say so.
+""".trimIndent()
     }
 }

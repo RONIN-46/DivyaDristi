@@ -173,19 +173,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("MAIN", "onCreate")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val modelPath = ModelManager.getModelPath(this)
-
-        Log.d("MODEL", modelPath)
-
-        val success = LLMNative.loadModel(modelPath)
-
-        Log.d("LLM", "Loaded = $success")
-
         llmManager = LLMManager(this)
         llmManager.initialize()
+        Log.d("MAIN", "Initializing LLM")
         ocrManager = OCRManager()
         // Initialize UI components
         imageView = findViewById(R.id.imageView)
@@ -461,34 +455,40 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             return
         }
 
-        // Below is the working code commented for LLM promt response
-        //val response = featureExecutor.execute(feature)
-        //resultText.text = response
-        //speakText(response)
-        val prompt = PromptBuilder.build(command)
+        val prompt = PromptBuilder.build(
+            command,
+            ContextManager.getContext()
+        )
         Log.d("PROMPT", prompt)
 
-        llmManager.generate(prompt, object : LLMCallback {
+        llmManager.generate(
+            prompt,
+            object : LLMCallback {
 
-            override fun onToken(token: String) {
-                // We'll use this later for streaming llama.cpp output.
-                // For now, leave it empty.
-            }
+                override fun onToken(token: String) {
+                }
 
-            override fun onComplete(response: String) {
-                runOnUiThread {
-                    resultText.text = response
-                    speakText(response)
+                override fun onComplete(response: String) {
+
+                    runOnUiThread {
+
+                        resultText.text = response
+
+                        speakText(response)
+                    }
+                }
+
+                override fun onError(message: String) {
+
+                    runOnUiThread {
+
+                        resultText.text = message
+
+                        speakText(message)
+                    }
                 }
             }
-
-            override fun onError(message: String) {
-                runOnUiThread {
-                    resultText.text = message
-                    speakText(message)
-                }
-            }
-        })
+        )
     }
 
     private fun detectColorForCommand(bitmap: Bitmap, command: String) {
