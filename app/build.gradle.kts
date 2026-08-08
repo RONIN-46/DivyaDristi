@@ -8,9 +8,16 @@ plugins {
 android {
     namespace = "com.krushna.divyadrishti"
     compileSdk = 36
+    ndkVersion = "30.0.14904198"
 
     androidResources {
         noCompress.add("tflite")
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
     }
 
     defaultConfig {
@@ -19,8 +26,17 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags += ""
+            }
+        }
     }
 
 
@@ -72,6 +88,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation("androidx.activity:activity-ktx:1.10.1")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
     ksp(libs.androidx.room.compiler)
 
 

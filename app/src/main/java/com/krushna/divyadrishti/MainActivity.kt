@@ -51,10 +51,12 @@ import com.krushna.divyadrishti.face.registration.FaceRegistrationFlow
 import com.krushna.divyadrishti.face.registration.FaceRegistrationManager
 import com.krushna.divyadrishti.speech.SpeechManager
 import com.krushna.divyadrishti.speech.VoiceCommandListener
+import com.krushna.divyadrishti.llm.LLMManager
 import com.krushna.divyadrishti.llm.IntentClassifier
 import com.krushna.divyadrishti.llm.IntentType
 import com.krushna.divyadrishti.router.FeatureRouter
 import com.krushna.divyadrishti.router.FeatureType
+import com.krushna.divyadrishti.llm.PromptBuilder
 import com.krushna.divyadrishti.model.FaceContext
 import com.krushna.divyadrishti.model.ContextManager
 import com.krushna.divyadrishti.model.SceneContext
@@ -69,7 +71,10 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import com.krushna.divyadrishti.model.OCRContext
 import com.krushna.divyadrishti.executor.FeatureExecutor
-
+import com.krushna.divyadrishti.llm.LLMCallback
+import com.krushna.divyadrishti.llm.LLMNative
+import com.krushna.divyadrishti.llm.ModelManager
+import java.io.File
 
 private data class ObjectInfo(
     val label: String,
@@ -77,7 +82,6 @@ private data class ObjectInfo(
     val xCenterNorm: Float,
     val box: BoundingBox
 )
-
 private data class Detection(val box: BoundingBox, val label: String, val confidence: Float)
 private data class BoundingBox(val x: Float, val y: Float, val w: Float, val h: Float)
 
@@ -125,6 +129,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var voiceButton: Button
     private lateinit var currencyInterpreter: Interpreter
     private lateinit var currencyLabels: List<String>
+    private lateinit var llmManager: LLMManager
     private var isCurrencyDetectionEnabled = false
 
     private var selectedImageUri: Uri? = null // This tracks if a gallery image is loaded
@@ -168,8 +173,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("MAIN", "onCreate")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        llmManager = LLMManager(this)
+        llmManager.initialize()
+        Log.d("MAIN", "Initializing LLM")
         ocrManager = OCRManager()
         // Initialize UI components
         imageView = findViewById(R.id.imageView)
@@ -381,6 +391,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
 
+        try {
+            Log.d("MODEL", "Before getModelPath")
+
+            val modelPath = ModelManager.getModelPath(this)
+
+            Log.d("MODEL", "Path = $modelPath")
+
+            val file = File(modelPath)
+
+            Log.d(
+                "MODEL",
+                "Exists=${file.exists()} Size=${file.length()}"
+            )
+        } catch (e: Exception) {
+            Log.e("MODEL", "ModelManager failed", e)
+        }
+
         ocrButton.setOnClickListener {
             if (selectedImageUri != null) {
                 // CASE 1: Use URI if image was picked from Gallery
@@ -428,12 +455,40 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             return
         }
 
-        // Our FeatureExecutor for all other features
-        val response = featureExecutor.execute(feature)
+        val prompt = PromptBuilder.build(
+            command,
+            ContextManager.getContext()
+        )
+        Log.d("PROMPT", prompt)
 
-        resultText.text = response
+        llmManager.generate(
+            prompt,
+            object : LLMCallback {
 
-        speakText(response)
+                override fun onToken(token: String) {
+                }
+
+                override fun onComplete(response: String) {
+
+                    runOnUiThread {
+
+                        resultText.text = response
+
+                        speakText(response)
+                    }
+                }
+
+                override fun onError(message: String) {
+
+                    runOnUiThread {
+
+                        resultText.text = message
+
+                        speakText(message)
+                    }
+                }
+            }
+        )
     }
 
     private fun detectColorForCommand(bitmap: Bitmap, command: String) {

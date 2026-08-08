@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+*.gguf
 *.iml
 .gradle
 /local.properties
