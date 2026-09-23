@@ -441,19 +441,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         val intent = intentClassifier.classify(command)
         val feature = featureRouter.route(intent)
 
-        // Keep teammate's voice color detection
-        if (feature == FeatureType.COLOR) {
-
-            val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
-
-            if (bitmap == null) {
-                speakAndToast("Please capture or select an image first.")
-                return
-            }
-
-            detectColorForCommand(bitmap, command)
-            return
-        }
 
         val prompt = PromptBuilder.build(
             command,
@@ -855,9 +842,27 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
         val (scene, confidence) = predictScene(bitmap)
         val confidencePercentage = (confidence * 100).toInt()
+
         val detections = detectObjects(bitmap)
+
         latestScene.clear()
         latestScene.addAll(detections)
+
+
+// =========================================
+// SEPARATE HSV COLOR FEATURE
+// =========================================
+
+        val detectedColors =
+            detectColorsForObjects(
+                bitmap,
+                detections
+            )
+
+        Log.d(
+            "COLOR_FEATURE",
+            "HSV Object Colors = $detectedColors"
+        )
 
         val cleanScene = scene.substringAfterLast("/").replace(Regex("[\\d/_\\\\-]"), " ").trim()
         val sceneDescription = when {
@@ -876,19 +881,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             DetectedObject(
                 label = it.label,
                 confidence = 1.0f,
-                position = getObjectPosition(it.xCenterNorm),
-                color = it.color
+                position = getObjectPosition(
+                    xCenter = it.xCenterNorm
+                ),
+                color = ""
             )
         }.toMutableList()
 
-        val detectedColors = mutableMapOf<String, String>()
-        detections.forEach {
-            detectedColors[it.label] = it.color
-        }
+
         ContextManager.updateColors(
             ColorContext(
-                colors = detectedColors
+                colors = detectedColors.toMutableMap()
             )
+        )
+        Log.d(
+            "COLOR_FEATURE",
+            "ColorContext updated = $detectedColors"
         )
 
         ContextManager.updateScene(
@@ -1041,9 +1049,93 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
         return nonMaxSuppression(detections).map {
-            val color = ColorDetector.detectDominantColor(cropObject(bitmap, it.box))
-            ObjectInfo(it.label, color, it.box.x, it.box)
+            ObjectInfo(
+                label = it.label,
+                color = "unknown",
+                xCenterNorm = it.box.x,
+                box = it.box
+            )
         }
+    }
+    private fun cropObject(
+        bitmap: Bitmap,
+        box: BoundingBox
+    ): Bitmap {
+
+        // YOLO BoundingBox:
+        // x, y = CENTER of object
+        // w, h = WIDTH and HEIGHT
+        // Values are normalized to 0..1
+
+        val left =
+            ((box.x - box.w / 2f) * bitmap.width).toInt()
+
+        val top =
+            ((box.y - box.h / 2f) * bitmap.height).toInt()
+
+        val right =
+            ((box.x + box.w / 2f) * bitmap.width).toInt()
+
+        val bottom =
+            ((box.y + box.h / 2f) * bitmap.height).toInt()
+
+        // Keep coordinates inside bitmap
+        val safeLeft =
+            left.coerceIn(0, bitmap.width - 1)
+
+        val safeTop =
+            top.coerceIn(0, bitmap.height - 1)
+
+        val safeRight =
+            right.coerceIn(safeLeft + 1, bitmap.width)
+
+        val safeBottom =
+            bottom.coerceIn(safeTop + 1, bitmap.height)
+
+        return Bitmap.createBitmap(
+            bitmap,
+            safeLeft,
+            safeTop,
+            safeRight - safeLeft,
+            safeBottom - safeTop
+        )
+    }
+    private fun detectColorsForObjects(
+        bitmap: Bitmap,
+        objects: List<ObjectInfo>
+    ): Map<String, String> {
+
+        val colors = mutableMapOf<String, String>()
+
+        objects.forEach { obj ->
+
+            try {
+                val croppedBitmap = cropObject(bitmap, obj.box)
+
+                val colorResult = ColorDetector.analyze(croppedBitmap)
+
+                val color = colorResult.name
+
+                colors[obj.label] = color
+
+                Log.d(
+                    "COLOR_FEATURE",
+                    "Object=${obj.label}, HSV Color=$color"
+                )
+
+            } catch (e: Exception) {
+
+                Log.e(
+                    "COLOR_FEATURE",
+                    "Color detection failed for ${obj.label}",
+                    e
+                )
+
+                colors[obj.label] = "Unknown"
+            }
+        }
+
+        return colors
     }
 
     private fun nonMaxSuppression(
@@ -1072,42 +1164,69 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         return if (unionArea > 0) intersectionArea / unionArea else 0f
     }
 
-    private fun cropObject(bitmap: Bitmap, box: BoundingBox): Bitmap {
-        val left = ((box.x - box.w / 2f) * bitmap.width).toInt().coerceIn(0, bitmap.width - 1)
-        val top = ((box.y - box.h / 2f) * bitmap.height).toInt().coerceIn(0, bitmap.height - 1)
-        val width =
-            (box.w * bitmap.width).toInt().coerceAtLeast(1).coerceAtMost(bitmap.width - left)
-        val height =
-            (box.h * bitmap.height).toInt().coerceAtLeast(1).coerceAtMost(bitmap.height - top)
-        return Bitmap.createBitmap(bitmap, left, top, width, height)
-    }
+
 
     private fun summarizeEntities(detections: List<ObjectInfo>): String {
-        val formatList = { objects: List<ObjectInfo> ->
-            val items = objects.map { objectInfo ->
-                val color = objectInfo.color.lowercase(Locale.getDefault())
-                when {
-                    objectInfo.label.equals("person", ignoreCase = true) && color != "unknown" ->
-                        "a person wearing predominantly $color"
-                    color != "unknown" -> "a $color ${objectInfo.label}"
-                    else -> "a ${objectInfo.label}"
+
+        fun formatRegion(objects: List<ObjectInfo>): String {
+            if (objects.isEmpty()) return ""
+
+            val grouped = objects
+                .groupBy { it.label.lowercase(Locale.getDefault()) }
+                .map { (label, items) ->
+                    val count = items.size
+
+                    if (count == 1) {
+                        "a $label"
+                    } else {
+                        "$count ${label}${if (label.endsWith("s")) "" else "s"}"
+                    }
                 }
-            }
-            when {
-                items.isEmpty() -> ""
-                items.size == 1 -> items.first()
-                items.size == 2 -> items.joinToString(" and ")
-                else -> items.dropLast(1).joinToString(", ") + ", and " + items.last()
+
+            return when {
+                grouped.size == 1 -> grouped.first()
+                grouped.size == 2 -> grouped.joinToString(" and ")
+                else -> grouped.dropLast(1).joinToString(", ") +
+                        ", and " +
+                        grouped.last()
             }
         }
-        val left = formatList(detections.filter { it.xCenterNorm < 0.33f })
-        val center = formatList(detections.filter { it.xCenterNorm in 0.33f..0.67f })
-        val right = formatList(detections.filter { it.xCenterNorm > 0.67f })
+
+        val leftObjects = detections.filter {
+            it.xCenterNorm < 0.33f
+        }
+
+        val centerObjects = detections.filter {
+            it.xCenterNorm in 0.33f..0.67f
+        }
+
+        val rightObjects = detections.filter {
+            it.xCenterNorm > 0.67f
+        }
+
+        val left = formatRegion(leftObjects)
+        val center = formatRegion(centerObjects)
+        val right = formatRegion(rightObjects)
+
         val parts = mutableListOf<String>()
-        if (center.isNotEmpty()) parts.add("in front of you, there is $center")
-        if (left.isNotEmpty()) parts.add("to your left, I see $left")
-        if (right.isNotEmpty()) parts.add("and to your right is $right")
-        return if (parts.isEmpty()) "" else parts.joinToString(", ") + "."
+
+        if (left.isNotEmpty()) {
+            parts.add("to your left, I see $left")
+        }
+
+        if (center.isNotEmpty()) {
+            parts.add("in front of you, there is $center")
+        }
+
+        if (right.isNotEmpty()) {
+            parts.add("to your right, I see $right")
+        }
+
+        return if (parts.isEmpty()) {
+            ""
+        } else {
+            parts.joinToString(", ") + "."
+        }
     }
 
     private fun getObjectPosition(xCenter: Float): String {
