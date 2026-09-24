@@ -155,20 +155,59 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private val featureExecutor = FeatureExecutor()
 
     // Launcher for selecting an image from the gallery
-    private val imagePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            selectedImageUri = it // Save the Uri for later use
-            imageView.setImageURI(it) // Show it on screen
+    private val imagePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
 
-            // Call OCR directly using the URI (Fixes the rotation/hardware bitmap issue)
-            ocrManager.recognizeFromUri(
-                context = this,
-                uri = it,
-                onResult = { text ->
-                    speakAndToast(text)
-                    ocrResultText.text = text},
-                onError = { e -> speakAndToast("Read failed: ${e.message}") }
-            )
+        uri?.let {
+
+            selectedImageUri = it
+
+            try {
+
+                // Load the selected gallery image as Bitmap
+                val inputStream = contentResolver.openInputStream(it)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (bitmap == null) {
+                    Toast.makeText(
+                        this,
+                        "Unable to load image",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@let
+                }
+
+                // Store and display the image
+                originalBitmap = bitmap
+                imageView.setImageBitmap(bitmap)
+
+                // Clear old OCR result
+                ocrResultText.text = ""
+
+                statusText.text = "Image selected. Processing..."
+
+                // Automatically run YOLO + Scene + HSV + Face
+                processAndSpeak(bitmap)
+
+                // OCR continues automatically
+
+
+            } catch (e: Exception) {
+
+                Log.e(
+                    "GALLERY",
+                    "Failed to load gallery image",
+                    e
+                )
+
+                Toast.makeText(
+                    this,
+                    "Failed to load image: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 
@@ -659,8 +698,141 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     debugText.visibility = View.GONE
                 }
 
+                // -----------------------------------------
+                // 1. Existing YOLO + Scene + HSV + Currency
+                // -----------------------------------------
                 val sceneCaption = processImage(bitmap)
 
+                // -----------------------------------------
+                // Results from OCR + Face
+                // -----------------------------------------
+                var ocrText = ""
+                var faceCaption = ""
+
+                var ocrDone = false
+                var faceDone = false
+
+                val lock = Any()
+
+                fun finishIfReady() {
+
+                    val finalCaption: String
+
+                    synchronized(lock) {
+
+                        if (!ocrDone || !faceDone) {
+                            return
+                        }
+
+                        val parts = mutableListOf<String>()
+
+                        // ExistocrText.isNotBlanking YOLO / Scene / Currency output
+                        if (sceneCaption.isNotBlank()) {
+                            parts.add(sceneCaption)
+                        }
+
+                        // Face result
+                        if (faceCaption.isNotBlank()) {
+                            parts.add(faceCaption)
+                        }
+
+                        // OCR result
+                        if (ocrText.isNotBlank()) {
+
+                            parts.add(
+                                "The text in the image says \"$ocrText\"."
+                            )
+                        }
+
+                        finalCaption =
+                            parts.joinToString(" ")
+                    }
+
+                    runOnUiThread {
+
+                        resultText.text = finalCaption
+
+                        // ONE TTS OUTPUT
+                        speakText(finalCaption)
+
+                        statusText.text = "Processing complete."
+                        detectButton.isEnabled = true
+                    }
+                }
+
+                // -----------------------------------------
+                // 2. OCR
+                // -----------------------------------------
+                runOCR(
+
+                    bitmap = bitmap,
+
+                    onResult = { text ->
+
+                        synchronized(lock) {
+
+                            val cleanText = text.trim()
+
+                            if (isValidOCRText(cleanText)) {
+
+                                ocrText = cleanText
+
+                                ContextManager.updateOCR(
+                                    OCRContext(
+                                        text = cleanText,
+                                        available = true
+                                    )
+                                )
+
+                            } else {
+
+                                ocrText = ""
+
+                                ContextManager.updateOCR(
+                                    OCRContext()
+                                )
+                            }
+
+                            ocrDone = true
+                        }
+
+                        runOnUiThread {
+                            ocrResultText.text = ocrText
+                        }
+
+                        finishIfReady()
+                    },
+
+                    onError = { error ->
+
+                        Log.e(
+                            "OCR",
+                            "OCR failed",
+                            error
+                        )
+
+                        synchronized(lock) {
+
+                            ocrText = ""
+
+                            ContextManager.updateOCR(
+                                OCRContext()
+                            )
+
+                            ocrDone = true
+                        }
+
+                        runOnUiThread {
+                            ocrResultText.text = ""
+                        }
+
+                        finishIfReady()
+                    }
+                )
+
+                // -----------------------------------------
+                // 3. Face Recognition
+                // -----------------------------------------
                 runOnUiThread {
 
                     faceRecognitionFlow.recognize(
@@ -669,65 +841,64 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                         onResult = { faceResult ->
 
-                            val recognizedPersons = mutableListOf<String>()
+                            synchronized(lock) {
 
-                            if (
-                                faceResult != "No face detected" &&
-                                faceResult != "Unknown person"
-                            ) {
-                                recognizedPersons.add(faceResult)
-                            }
+                                val recognizedPersons =
+                                    mutableListOf<String>()
 
-                            ContextManager.updateFaces(
+                                if (
+                                    faceResult != "No face detected" &&
+                                    faceResult != "Unknown person"
+                                ) {
 
-                                FaceContext(
+                                    recognizedPersons.add(
+                                        faceResult
+                                    )
+                                }
 
-                                    persons = recognizedPersons
-
+                                ContextManager.updateFaces(
+                                    FaceContext(
+                                        persons = recognizedPersons
+                                    )
                                 )
 
-                            )
+                                faceCaption =
+                                    when (faceResult) {
 
-                            val finalCaption = when (faceResult) {
+                                        "No face detected" ->
+                                            ""
 
-                                "No face detected" ->
-                                    sceneCaption
+                                        "Unknown person" ->
+                                            "The person is unknown."
 
-                                "Unknown person" ->
-                                    "$sceneCaption The person is unknown."
+                                        else ->
+                                            "This is $faceResult."
+                                    }
 
-                                else ->
-                                    "$sceneCaption This is $faceResult."
+                                faceDone = true
                             }
 
-                            resultText.text = finalCaption
-
-                            speakText(finalCaption)
-
-                            statusText.text = "Processing complete."
-
-                            detectButton.isEnabled = true
+                            finishIfReady()
                         },
 
                         onError = { error ->
-
-                            ContextManager.updateFaces(
-                                FaceContext()
-                            )
 
                             Log.e(
                                 "FACE_RECOGNITION",
                                 error
                             )
 
-                            resultText.text = sceneCaption
+                            synchronized(lock) {
 
-                            speakText(sceneCaption)
+                                ContextManager.updateFaces(
+                                    FaceContext()
+                                )
 
-                            statusText.text =
-                                "Processing complete."
+                                faceCaption = ""
+                                faceDone = true
+                            }
 
-                            detectButton.isEnabled = true
+                            finishIfReady()
                         }
                     )
                 }
@@ -751,44 +922,58 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         }
     }
 
-    private fun runOCR(bitmap: Bitmap) {
+    private fun runOCR(
+        bitmap: Bitmap,
+        onResult: (String) -> Unit,
+        onError: (Exception) -> Unit
+    ) {
 
-        val processedBitmap =
-            ImagePreprocessor().process(bitmap)
+        try {
 
-        OCRManager().recognize(
+            val processedBitmap =
+                ImagePreprocessor().process(bitmap)
 
-            processedBitmap,
+            ocrManager.recognize(
 
-            onResult = { text ->
-                ContextManager.updateOCR(
-                    OCRContext(
-                        text = text,
-                        available = text.isNotBlank()
-                    )
-                )
-                runOnUiThread {
-                    ocrResultText.text = text
+                processedBitmap,
+
+                onResult = { text ->
+
+                    onResult(text.trim())
+                },
+
+                onError = { error ->
+
+                    onError(error)
                 }
-            },
-            onError = {
+            )
 
-                ContextManager.updateOCR(
+        } catch (e: Exception) {
 
-                    OCRContext()
-
-                )
-
-                runOnUiThread {
-
-                    ocrResultText.text = "OCR Failed"
-
-                }
-
-            }
-        )
+            onError(e)
+        }
     }
+    private fun isValidOCRText(text: String): Boolean {
 
+        val cleanText = text.trim()
+
+        if (cleanText.isBlank()) {
+            return false
+        }
+
+        val noTextMessages = listOf(
+            "No text found",
+            "No text detected",
+            "No text found in this image.",
+            "No text found in this image",
+            "No text detected in this image.",
+            "No text detected in this image"
+        )
+
+        return noTextMessages.none {
+            cleanText.equals(it, ignoreCase = true)
+        }
+    }
     private fun toggleCaptureMode() {
         isAutoMode = !isAutoMode
         if (isAutoMode) {
