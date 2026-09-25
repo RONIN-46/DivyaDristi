@@ -155,20 +155,59 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private val featureExecutor = FeatureExecutor()
 
     // Launcher for selecting an image from the gallery
-    private val imagePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            selectedImageUri = it // Save the Uri for later use
-            imageView.setImageURI(it) // Show it on screen
+    private val imagePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
 
-            // Call OCR directly using the URI (Fixes the rotation/hardware bitmap issue)
-            ocrManager.recognizeFromUri(
-                context = this,
-                uri = it,
-                onResult = { text ->
-                    speakAndToast(text)
-                    ocrResultText.text = text},
-                onError = { e -> speakAndToast("Read failed: ${e.message}") }
-            )
+        uri?.let {
+
+            selectedImageUri = it
+
+            try {
+
+                // Load the selected gallery image as Bitmap
+                val inputStream = contentResolver.openInputStream(it)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (bitmap == null) {
+                    Toast.makeText(
+                        this,
+                        "Unable to load image",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@let
+                }
+
+                // Store and display the image
+                originalBitmap = bitmap
+                imageView.setImageBitmap(bitmap)
+
+                // Clear old OCR result
+                ocrResultText.text = ""
+
+                statusText.text = "Image selected. Processing..."
+
+                // Automatically run YOLO + Scene + HSV + Face
+                processAndSpeak(bitmap)
+
+                // OCR continues automatically
+
+
+            } catch (e: Exception) {
+
+                Log.e(
+                    "GALLERY",
+                    "Failed to load gallery image",
+                    e
+                )
+
+                Toast.makeText(
+                    this,
+                    "Failed to load image: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 
@@ -441,19 +480,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         val intent = intentClassifier.classify(command)
         val feature = featureRouter.route(intent)
 
-        // Keep teammate's voice color detection
-        if (feature == FeatureType.COLOR) {
-
-            val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
-
-            if (bitmap == null) {
-                speakAndToast("Please capture or select an image first.")
-                return
-            }
-
-            detectColorForCommand(bitmap, command)
-            return
-        }
 
         val prompt = PromptBuilder.build(
             command,
@@ -672,8 +698,141 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     debugText.visibility = View.GONE
                 }
 
+                // -----------------------------------------
+                // 1. Existing YOLO + Scene + HSV + Currency
+                // -----------------------------------------
                 val sceneCaption = processImage(bitmap)
 
+                // -----------------------------------------
+                // Results from OCR + Face
+                // -----------------------------------------
+                var ocrText = ""
+                var faceCaption = ""
+
+                var ocrDone = false
+                var faceDone = false
+
+                val lock = Any()
+
+                fun finishIfReady() {
+
+                    val finalCaption: String
+
+                    synchronized(lock) {
+
+                        if (!ocrDone || !faceDone) {
+                            return
+                        }
+
+                        val parts = mutableListOf<String>()
+
+                        // ExistocrText.isNotBlanking YOLO / Scene / Currency output
+                        if (sceneCaption.isNotBlank()) {
+                            parts.add(sceneCaption)
+                        }
+
+                        // Face result
+                        if (faceCaption.isNotBlank()) {
+                            parts.add(faceCaption)
+                        }
+
+                        // OCR result
+                        if (ocrText.isNotBlank()) {
+
+                            parts.add(
+                                "The text in the image says \"$ocrText\"."
+                            )
+                        }
+
+                        finalCaption =
+                            parts.joinToString(" ")
+                    }
+
+                    runOnUiThread {
+
+                        resultText.text = finalCaption
+
+                        // ONE TTS OUTPUT
+                        speakText(finalCaption)
+
+                        statusText.text = "Processing complete."
+                        detectButton.isEnabled = true
+                    }
+                }
+
+                // -----------------------------------------
+                // 2. OCR
+                // -----------------------------------------
+                runOCR(
+
+                    bitmap = bitmap,
+
+                    onResult = { text ->
+
+                        synchronized(lock) {
+
+                            val cleanText = text.trim()
+
+                            if (isValidOCRText(cleanText)) {
+
+                                ocrText = cleanText
+
+                                ContextManager.updateOCR(
+                                    OCRContext(
+                                        text = cleanText,
+                                        available = true
+                                    )
+                                )
+
+                            } else {
+
+                                ocrText = ""
+
+                                ContextManager.updateOCR(
+                                    OCRContext()
+                                )
+                            }
+
+                            ocrDone = true
+                        }
+
+                        runOnUiThread {
+                            ocrResultText.text = ocrText
+                        }
+
+                        finishIfReady()
+                    },
+
+                    onError = { error ->
+
+                        Log.e(
+                            "OCR",
+                            "OCR failed",
+                            error
+                        )
+
+                        synchronized(lock) {
+
+                            ocrText = ""
+
+                            ContextManager.updateOCR(
+                                OCRContext()
+                            )
+
+                            ocrDone = true
+                        }
+
+                        runOnUiThread {
+                            ocrResultText.text = ""
+                        }
+
+                        finishIfReady()
+                    }
+                )
+
+                // -----------------------------------------
+                // 3. Face Recognition
+                // -----------------------------------------
                 runOnUiThread {
 
                     faceRecognitionFlow.recognize(
@@ -682,65 +841,64 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                         onResult = { faceResult ->
 
-                            val recognizedPersons = mutableListOf<String>()
+                            synchronized(lock) {
 
-                            if (
-                                faceResult != "No face detected" &&
-                                faceResult != "Unknown person"
-                            ) {
-                                recognizedPersons.add(faceResult)
-                            }
+                                val recognizedPersons =
+                                    mutableListOf<String>()
 
-                            ContextManager.updateFaces(
+                                if (
+                                    faceResult != "No face detected" &&
+                                    faceResult != "Unknown person"
+                                ) {
 
-                                FaceContext(
+                                    recognizedPersons.add(
+                                        faceResult
+                                    )
+                                }
 
-                                    persons = recognizedPersons
-
+                                ContextManager.updateFaces(
+                                    FaceContext(
+                                        persons = recognizedPersons
+                                    )
                                 )
 
-                            )
+                                faceCaption =
+                                    when (faceResult) {
 
-                            val finalCaption = when (faceResult) {
+                                        "No face detected" ->
+                                            ""
 
-                                "No face detected" ->
-                                    sceneCaption
+                                        "Unknown person" ->
+                                            "The person is unknown."
 
-                                "Unknown person" ->
-                                    "$sceneCaption The person is unknown."
+                                        else ->
+                                            "This is $faceResult."
+                                    }
 
-                                else ->
-                                    "$sceneCaption This is $faceResult."
+                                faceDone = true
                             }
 
-                            resultText.text = finalCaption
-
-                            speakText(finalCaption)
-
-                            statusText.text = "Processing complete."
-
-                            detectButton.isEnabled = true
+                            finishIfReady()
                         },
 
                         onError = { error ->
-
-                            ContextManager.updateFaces(
-                                FaceContext()
-                            )
 
                             Log.e(
                                 "FACE_RECOGNITION",
                                 error
                             )
 
-                            resultText.text = sceneCaption
+                            synchronized(lock) {
 
-                            speakText(sceneCaption)
+                                ContextManager.updateFaces(
+                                    FaceContext()
+                                )
 
-                            statusText.text =
-                                "Processing complete."
+                                faceCaption = ""
+                                faceDone = true
+                            }
 
-                            detectButton.isEnabled = true
+                            finishIfReady()
                         }
                     )
                 }
@@ -764,44 +922,58 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         }
     }
 
-    private fun runOCR(bitmap: Bitmap) {
+    private fun runOCR(
+        bitmap: Bitmap,
+        onResult: (String) -> Unit,
+        onError: (Exception) -> Unit
+    ) {
 
-        val processedBitmap =
-            ImagePreprocessor().process(bitmap)
+        try {
 
-        OCRManager().recognize(
+            val processedBitmap =
+                ImagePreprocessor().process(bitmap)
 
-            processedBitmap,
+            ocrManager.recognize(
 
-            onResult = { text ->
-                ContextManager.updateOCR(
-                    OCRContext(
-                        text = text,
-                        available = text.isNotBlank()
-                    )
-                )
-                runOnUiThread {
-                    ocrResultText.text = text
+                processedBitmap,
+
+                onResult = { text ->
+
+                    onResult(text.trim())
+                },
+
+                onError = { error ->
+
+                    onError(error)
                 }
-            },
-            onError = {
+            )
 
-                ContextManager.updateOCR(
+        } catch (e: Exception) {
 
-                    OCRContext()
-
-                )
-
-                runOnUiThread {
-
-                    ocrResultText.text = "OCR Failed"
-
-                }
-
-            }
-        )
+            onError(e)
+        }
     }
+    private fun isValidOCRText(text: String): Boolean {
 
+        val cleanText = text.trim()
+
+        if (cleanText.isBlank()) {
+            return false
+        }
+
+        val noTextMessages = listOf(
+            "No text found",
+            "No text detected",
+            "No text found in this image.",
+            "No text found in this image",
+            "No text detected in this image.",
+            "No text detected in this image"
+        )
+
+        return noTextMessages.none {
+            cleanText.equals(it, ignoreCase = true)
+        }
+    }
     private fun toggleCaptureMode() {
         isAutoMode = !isAutoMode
         if (isAutoMode) {
@@ -855,9 +1027,27 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
         val (scene, confidence) = predictScene(bitmap)
         val confidencePercentage = (confidence * 100).toInt()
+
         val detections = detectObjects(bitmap)
+
         latestScene.clear()
         latestScene.addAll(detections)
+
+
+// =========================================
+// SEPARATE HSV COLOR FEATURE
+// =========================================
+
+        val detectedColors =
+            detectColorsForObjects(
+                bitmap,
+                detections
+            )
+
+        Log.d(
+            "COLOR_FEATURE",
+            "HSV Object Colors = $detectedColors"
+        )
 
         val cleanScene = scene.substringAfterLast("/").replace(Regex("[\\d/_\\\\-]"), " ").trim()
         val sceneDescription = when {
@@ -876,19 +1066,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             DetectedObject(
                 label = it.label,
                 confidence = 1.0f,
-                position = getObjectPosition(it.xCenterNorm),
-                color = it.color
+                position = getObjectPosition(
+                    xCenter = it.xCenterNorm
+                ),
+                color = ""
             )
         }.toMutableList()
 
-        val detectedColors = mutableMapOf<String, String>()
-        detections.forEach {
-            detectedColors[it.label] = it.color
-        }
+
         ContextManager.updateColors(
             ColorContext(
-                colors = detectedColors
+                colors = detectedColors.toMutableMap()
             )
+        )
+        Log.d(
+            "COLOR_FEATURE",
+            "ColorContext updated = $detectedColors"
         )
 
         ContextManager.updateScene(
@@ -1041,9 +1234,93 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
         return nonMaxSuppression(detections).map {
-            val color = ColorDetector.detectDominantColor(cropObject(bitmap, it.box))
-            ObjectInfo(it.label, color, it.box.x, it.box)
+            ObjectInfo(
+                label = it.label,
+                color = "unknown",
+                xCenterNorm = it.box.x,
+                box = it.box
+            )
         }
+    }
+    private fun cropObject(
+        bitmap: Bitmap,
+        box: BoundingBox
+    ): Bitmap {
+
+        // YOLO BoundingBox:
+        // x, y = CENTER of object
+        // w, h = WIDTH and HEIGHT
+        // Values are normalized to 0..1
+
+        val left =
+            ((box.x - box.w / 2f) * bitmap.width).toInt()
+
+        val top =
+            ((box.y - box.h / 2f) * bitmap.height).toInt()
+
+        val right =
+            ((box.x + box.w / 2f) * bitmap.width).toInt()
+
+        val bottom =
+            ((box.y + box.h / 2f) * bitmap.height).toInt()
+
+        // Keep coordinates inside bitmap
+        val safeLeft =
+            left.coerceIn(0, bitmap.width - 1)
+
+        val safeTop =
+            top.coerceIn(0, bitmap.height - 1)
+
+        val safeRight =
+            right.coerceIn(safeLeft + 1, bitmap.width)
+
+        val safeBottom =
+            bottom.coerceIn(safeTop + 1, bitmap.height)
+
+        return Bitmap.createBitmap(
+            bitmap,
+            safeLeft,
+            safeTop,
+            safeRight - safeLeft,
+            safeBottom - safeTop
+        )
+    }
+    private fun detectColorsForObjects(
+        bitmap: Bitmap,
+        objects: List<ObjectInfo>
+    ): Map<String, String> {
+
+        val colors = mutableMapOf<String, String>()
+
+        objects.forEach { obj ->
+
+            try {
+                val croppedBitmap = cropObject(bitmap, obj.box)
+
+                val colorResult = ColorDetector.analyze(croppedBitmap)
+
+                val color = colorResult.name
+
+                colors[obj.label] = color
+
+                Log.d(
+                    "COLOR_FEATURE",
+                    "Object=${obj.label}, HSV Color=$color"
+                )
+
+            } catch (e: Exception) {
+
+                Log.e(
+                    "COLOR_FEATURE",
+                    "Color detection failed for ${obj.label}",
+                    e
+                )
+
+                colors[obj.label] = "Unknown"
+            }
+        }
+
+        return colors
     }
 
     private fun nonMaxSuppression(
@@ -1072,42 +1349,69 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         return if (unionArea > 0) intersectionArea / unionArea else 0f
     }
 
-    private fun cropObject(bitmap: Bitmap, box: BoundingBox): Bitmap {
-        val left = ((box.x - box.w / 2f) * bitmap.width).toInt().coerceIn(0, bitmap.width - 1)
-        val top = ((box.y - box.h / 2f) * bitmap.height).toInt().coerceIn(0, bitmap.height - 1)
-        val width =
-            (box.w * bitmap.width).toInt().coerceAtLeast(1).coerceAtMost(bitmap.width - left)
-        val height =
-            (box.h * bitmap.height).toInt().coerceAtLeast(1).coerceAtMost(bitmap.height - top)
-        return Bitmap.createBitmap(bitmap, left, top, width, height)
-    }
+
 
     private fun summarizeEntities(detections: List<ObjectInfo>): String {
-        val formatList = { objects: List<ObjectInfo> ->
-            val items = objects.map { objectInfo ->
-                val color = objectInfo.color.lowercase(Locale.getDefault())
-                when {
-                    objectInfo.label.equals("person", ignoreCase = true) && color != "unknown" ->
-                        "a person wearing predominantly $color"
-                    color != "unknown" -> "a $color ${objectInfo.label}"
-                    else -> "a ${objectInfo.label}"
+
+        fun formatRegion(objects: List<ObjectInfo>): String {
+            if (objects.isEmpty()) return ""
+
+            val grouped = objects
+                .groupBy { it.label.lowercase(Locale.getDefault()) }
+                .map { (label, items) ->
+                    val count = items.size
+
+                    if (count == 1) {
+                        "a $label"
+                    } else {
+                        "$count ${label}${if (label.endsWith("s")) "" else "s"}"
+                    }
                 }
-            }
-            when {
-                items.isEmpty() -> ""
-                items.size == 1 -> items.first()
-                items.size == 2 -> items.joinToString(" and ")
-                else -> items.dropLast(1).joinToString(", ") + ", and " + items.last()
+
+            return when {
+                grouped.size == 1 -> grouped.first()
+                grouped.size == 2 -> grouped.joinToString(" and ")
+                else -> grouped.dropLast(1).joinToString(", ") +
+                        ", and " +
+                        grouped.last()
             }
         }
-        val left = formatList(detections.filter { it.xCenterNorm < 0.33f })
-        val center = formatList(detections.filter { it.xCenterNorm in 0.33f..0.67f })
-        val right = formatList(detections.filter { it.xCenterNorm > 0.67f })
+
+        val leftObjects = detections.filter {
+            it.xCenterNorm < 0.33f
+        }
+
+        val centerObjects = detections.filter {
+            it.xCenterNorm in 0.33f..0.67f
+        }
+
+        val rightObjects = detections.filter {
+            it.xCenterNorm > 0.67f
+        }
+
+        val left = formatRegion(leftObjects)
+        val center = formatRegion(centerObjects)
+        val right = formatRegion(rightObjects)
+
         val parts = mutableListOf<String>()
-        if (center.isNotEmpty()) parts.add("in front of you, there is $center")
-        if (left.isNotEmpty()) parts.add("to your left, I see $left")
-        if (right.isNotEmpty()) parts.add("and to your right is $right")
-        return if (parts.isEmpty()) "" else parts.joinToString(", ") + "."
+
+        if (left.isNotEmpty()) {
+            parts.add("to your left, I see $left")
+        }
+
+        if (center.isNotEmpty()) {
+            parts.add("in front of you, there is $center")
+        }
+
+        if (right.isNotEmpty()) {
+            parts.add("to your right, I see $right")
+        }
+
+        return if (parts.isEmpty()) {
+            ""
+        } else {
+            parts.joinToString(", ") + "."
+        }
     }
 
     private fun getObjectPosition(xCenter: Float): String {

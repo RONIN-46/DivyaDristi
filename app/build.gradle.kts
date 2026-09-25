@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.krushna.divyadrishti"
     compileSdk = 36
-    ndkVersion = "30.0.14904198"
+    ndkVersion = "30.0.15729638"
 
     androidResources {
         noCompress.add("tflite")

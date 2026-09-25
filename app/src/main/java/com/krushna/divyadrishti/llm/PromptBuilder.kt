@@ -67,6 +67,8 @@ $command
 
 Answer only using the available information.
 If information is unavailable, clearly say so.
+Answer in the same language as the user's question.
+Keep the answer short and natural.
 """.trimIndent()
     }
 }
