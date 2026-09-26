@@ -82,6 +82,12 @@
                         android:backgroundTint="@android:color/holo_blue_light"
                         android:text="Connect"
                         android:textColor="@android:color/white" />
+
+                    <Button
+                        android:id="@+id/languageButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/switch_to_hindi" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

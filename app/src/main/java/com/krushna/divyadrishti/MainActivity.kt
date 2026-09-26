@@ -75,6 +75,8 @@ import com.krushna.divyadrishti.llm.LLMCallback
 import com.krushna.divyadrishti.llm.LLMNative
 import com.krushna.divyadrishti.llm.ModelManager
 import java.io.File
+import java.util.Locale
+import com.krushna.divyadrishti.language.LanguageManager
 
 private data class ObjectInfo(
     val label: String,
@@ -94,6 +96,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var detectButton: Button
     private lateinit var detectColorButton: Button
     private lateinit var connectButton: Button
+    private lateinit var languageButton: Button
     private lateinit var modeToggleButton: Button
     private lateinit var captureButton: Button
     private lateinit var ocrButton: Button
@@ -247,6 +250,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 //        cameraStatusText = findViewById(R.id.cameraStatusText)
         intervalEditText = findViewById(R.id.intervalEditText)
         autoModeSettingsCard = findViewById(R.id.autoModeSettingsCard)
+        languageButton = findViewById(R.id.languageButton)
+
+        languageButton.setOnClickListener {
+
+            val currentLanguage =
+                LanguageManager.getLanguage(this)
+
+            if (currentLanguage == LanguageManager.ENGLISH) {
+
+                switchLanguage(LanguageManager.HINDI)
+
+            } else {
+
+                switchLanguage(LanguageManager.ENGLISH)
+            }
+        }
 
         tts = TextToSpeech(this, this)
 
@@ -475,7 +494,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         updateUIForMode()
     }
 
+
+
     override fun onCommandRecognized(command: String) {
+
+
+        if (handleLanguageCommand(command)) {
+            return
+        }
 
         val intent = intentClassifier.classify(command)
         val feature = featureRouter.route(intent)
@@ -515,6 +541,39 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 }
             }
         )
+    }
+    private fun handleLanguageCommand(command: String): Boolean {
+
+        val normalized = command
+            .trim()
+            .lowercase(Locale.getDefault())
+
+        return when {
+
+            normalized == "hindi" ||
+                    normalized.contains("switch to hindi") ||
+                    normalized.contains("change to hindi") ||
+                    normalized.contains("hindi language") ||
+                    normalized.contains("हिंदी") ||
+                    normalized.contains("हिंदी में") -> {
+
+                switchLanguage(LanguageManager.HINDI)
+                true
+            }
+
+            normalized == "english" ||
+                    normalized.contains("switch to english") ||
+                    normalized.contains("change to english") ||
+                    normalized.contains("english language") ||
+                    normalized.contains("इंग्लिश") ||
+                    normalized.contains("अंग्रेजी") -> {
+
+                switchLanguage(LanguageManager.ENGLISH)
+                true
+            }
+
+            else -> false
+        }
     }
 
     private fun detectColorForCommand(bitmap: Bitmap, command: String) {
@@ -1490,7 +1549,38 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     override fun onInit(status: Int) {
-        if (status == TextToSpeech.SUCCESS) tts.language = Locale.ENGLISH
+        if (status == TextToSpeech.SUCCESS) {
+            updateTTSLanguage(
+                LanguageManager.getLanguage(this)
+            )
+        }
+    }
+
+    private fun updateTTSLanguage(language: String) {
+
+        val locale = when (language) {
+            LanguageManager.HINDI -> Locale("hi", "IN")
+            else -> Locale.US
+        }
+
+        val result = tts.setLanguage(locale)
+
+        if (result == TextToSpeech.LANG_MISSING_DATA ||
+            result == TextToSpeech.LANG_NOT_SUPPORTED) {
+
+            Toast.makeText(
+                this,
+                "Hindi TTS is not available",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private fun switchLanguage(language: String) {
+
+        LanguageManager.setLanguage(language)
+
+        updateTTSLanguage(language)
     }
 
     override fun onDestroy() {

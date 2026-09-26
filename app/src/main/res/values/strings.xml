@@ -1,9 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Divyadrishti</string>
-    <string name="captured_image">Captured image</string>
-    <string name="connecting_to_camera">Connecting to camera...</string>
-    <string name="processing_live">Processing Live</string>
-    <string name="switch_to_hindi">Switch to Hindi</string>
-    <string name="switch_to_english">Switch to English</string>
+
+    <string name="connection">Connection</string>
+    <string name="offline">Offline</string>
+    <string name="online">Online</string>
+    <string name="connect">Connect</string>
+
+    <string name="mode">Mode</string>
+    <string name="manual">Manual</string>
+    <string name="auto">Auto</string>
+
+    <string name="capture">Capture</string>
+    <string name="select_image">Select Image</string>
+    <string name="detect">Detect</string>
+    <string name="detect_color">Detect Color</string>
+    <string name="read_text">Read Text</string>
+
+    <string name="voice">Voice</string>
+    <string name="language">Language</string>
+    <string name="switch_to_hindi">हिंदी</string>
+
+    <string name="processing">Processing...</string>
+    <string name="detecting_color">Detecting color...</string>
+    <string name="color_detection_complete">Color detection complete.</string>
+
+    <string name="capture_success">Manual capture successful</string>
+    <string name="no_image">Please capture or select an image first.</string>
+
+    <string name="no_currency">No currency detected.</string>
+
+    <string name="register_face">Register Face</string>
+    <string name="manage_faces">Manage Faces</string>
+    <string name="person_name">Person name</string>
+    <string name="relation">Relation, e.g. Friend</string>
+
+    <string name="cancel">Cancel</string>
+    <string name="register">Register</string>
+    <string name="delete">Delete</string>
 </resources>

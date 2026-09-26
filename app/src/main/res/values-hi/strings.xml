@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">दिव्यदृष्टि</string>
+
+    <string name="connection">कनेक्शन</string>
+    <string name="offline">ऑफ़लाइन</string>
+    <string name="online">ऑनलाइन</string>
+    <string name="connect">कनेक्ट करें</string>
+
+    <string name="mode">मोड</string>
+    <string name="manual">मैनुअल</string>
+    <string name="auto">स्वचालित</string>
+
+    <string name="capture">चित्र लें</string>
+    <string name="select_image">चित्र चुनें</string>
+    <string name="detect">पहचानें</string>
+    <string name="detect_color">रंग पहचानें</string>
+    <string name="read_text">टेक्स्ट पढ़ें</string>
+
+    <string name="voice">आवाज़</string>
+    <string name="language">भाषा</string>
+    <string name="switch_to_hindi">हिंदी</string>
+
+    <string name="processing">प्रोसेसिंग हो रही है...</string>
+    <string name="detecting_color">रंग पहचाना जा रहा है...</string>
+    <string name="color_detection_complete">रंग पहचान पूरी हुई।</string>
+
+    <string name="capture_success">चित्र सफलतापूर्वक लिया गया।</string>
+    <string name="no_image">कृपया पहले चित्र लें या चुनें।</string>
+
+    <string name="no_currency">कोई मुद्रा नहीं मिली।</string>
+
+    <string name="register_face">चेहरा पंजीकृत करें</string>
+    <string name="manage_faces">पंजीकृत चेहरे</string>
+    <string name="person_name">व्यक्ति का नाम</string>
+    <string name="relation">रिश्ता, जैसे मित्र</string>
+
+    <string name="cancel">रद्द करें</string>
+    <string name="register">पंजीकृत करें</string>
+    <string name="delete">हटाएँ</string>
+
+</resources>
