@@ -12,6 +12,12 @@ set(LLAMA_BUILD_APP OFF)
 set(LLAMA_BUILD_UI OFF)
 set(BUILD_SHARED_LIBS OFF)
 # Android / GGML configuration
+if(ANDROID_ABI STREQUAL "arm64-v8a")
+    set(GGML_SYSTEM_ARCH "ARM")
+    set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16")
+    set(GGML_OPENMP ON)
+endif()
+
 set(GGML_NATIVE OFF)
 set(GGML_LLAMAFILE OFF)
 

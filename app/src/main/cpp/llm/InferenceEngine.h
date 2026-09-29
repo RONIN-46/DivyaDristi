@@ -18,6 +18,8 @@ public:
 
     std::string generate(const std::string & prompt);
 
+    void clearHistory();
+
     void release();
 
 private:

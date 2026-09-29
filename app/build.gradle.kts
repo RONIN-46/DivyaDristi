@@ -35,7 +35,11 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags += ""
+                cppFlags += "-O3 -DNDEBUG"
+                arguments += listOf(
+                    "-DCMAKE_BUILD_TYPE=Release",
+                    "-DANDROID_STL=c++_shared"
+                )
             }
         }
     }

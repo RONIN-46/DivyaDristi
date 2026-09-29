@@ -35,9 +35,11 @@ bool InferenceEngine::loadModel(const std::string &modelPath) {
     llama_context_params ctx_params =
             llama_context_default_params();
 
-    ctx_params.n_ctx = 4096;
+    ctx_params.n_ctx = 1024;
     ctx_params.n_batch = 512;
+    ctx_params.n_ubatch = 512;
     ctx_params.n_threads = 4;
+    ctx_params.n_threads_batch = 4;
 
     ctx = llama_init_from_model(
             model,
@@ -142,6 +144,10 @@ std::string InferenceEngine::generate(
             "Generate() entered on thread %ld",
             (long)gettid());
 
+    // Each query from PromptBuilder contains complete, freshly perceived scene context.
+    // Resetting context and KV memory prevents context bloat, memory leaks, and unbounded slowdowns.
+    clearHistory();
+
     const char * tmpl =
             llama_model_chat_template(
                     model,
@@ -208,16 +214,6 @@ std::string InferenceEngine::generate(
 
     llama_token newToken;
 
-    __android_log_print(
-            ANDROID_LOG_INFO,
-            TAG,
-            "Before decode");
-
-    __android_log_print(
-            ANDROID_LOG_INFO,
-            TAG,
-            "Before decode");
-
     if (decode_tokens_in_batches(
             ctx,
             batch,
@@ -233,18 +229,13 @@ std::string InferenceEngine::generate(
         return "Decode failed";
     }
 
-    __android_log_print(
-            ANDROID_LOG_INFO,
-            TAG,
-            "After decode");
-
     current_position += promptTokens.size();
 
-    while (true) {
-        __android_log_print(
-                ANDROID_LOG_INFO,
-                TAG,
-                "Inside generation loop");
+    // Cap output to 60 tokens to keep response time short (1-2s) and answers concise for TTS
+    const int max_tokens = 60;
+    int tokens_generated = 0;
+
+    while (tokens_generated < max_tokens) {
         int n_ctx = llama_n_ctx(ctx);
 
         int n_ctx_used =
@@ -255,7 +246,7 @@ std::string InferenceEngine::generate(
 
         if (n_ctx_used + batch.n_tokens > n_ctx) {
 
-            return "Context window exceeded.";
+            break;
         }
 
         newToken =
@@ -263,11 +254,6 @@ std::string InferenceEngine::generate(
                         sampler,
                         ctx,
                         -1);
-        __android_log_print(
-                ANDROID_LOG_INFO,
-                TAG,
-                "Token = %d",
-                newToken);
 
         common_sampler_accept(
                 sampler,
@@ -292,6 +278,8 @@ std::string InferenceEngine::generate(
                 true);
 
         current_position++;
+        tokens_generated++;
+
         if (llama_decode(ctx, batch) != 0) {
 
             __android_log_print(
@@ -323,7 +311,24 @@ std::string InferenceEngine::generate(
     return response;
 }
 
+void InferenceEngine::clearHistory() {
+    for (auto & msg : messages) {
+        if (msg.content) {
+            free((void *) msg.content);
+        }
+    }
+    messages.clear();
+    formatted.clear();
+    previousTemplateLength = 0;
+
+    if (ctx) {
+        llama_memory_seq_rm(llama_get_memory(ctx), -1, -1, -1);
+    }
+    current_position = 0;
+}
+
 void InferenceEngine::release() {
+    clearHistory();
 
     if (sampler) {
 
