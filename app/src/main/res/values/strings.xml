@@ -1,40 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- App -->
+    <string name="app_name">DivyaDrishti</string>
+
+    <!-- Header -->
+    <string name="header_title">ESP32-CAM</string>
+    <string name="header_subtitle">Smart Camera Controller</string>
+    <string name="info">Info</string>
+
+    <!-- Connection -->
     <string name="connection">Connection</string>
     <string name="offline">Offline</string>
     <string name="online">Online</string>
     <string name="connect">Connect</string>
 
+    <!-- Mode -->
     <string name="mode">Mode</string>
     <string name="manual">Manual</string>
     <string name="auto">Auto</string>
 
-    <string name="capture">Capture</string>
-    <string name="select_image">Select Image</string>
-    <string name="detect">Detect</string>
-    <string name="detect_color">Detect Color</string>
-    <string name="read_text">Read Text</string>
+    <!-- Auto Mode -->
+    <string name="auto_mode_interval">Auto Mode Interval (seconds)</string>
+    <string name="default_30">Default: 30</string>
 
-    <string name="voice">Voice</string>
-    <string name="language">Language</string>
+    <!-- Currency -->
+    <string name="currency_icon">Currency Icon</string>
+    <string name="currency_model">Currency Model</string>
+
+    <!-- System Status -->
+    <string name="system_status">System Status</string>
+    <string name="system_idle">System Idle</string>
+
+    <string name="capture_image">Capture Image</string>
+
+    <!-- Camera -->
+    <string name="camera_feed">Camera Feed</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="connected">Connected</string>
+    <string name="esp32_camera_feed">ESP32 Camera Feed</string>
+
+    <!-- Object Detection -->
+    <string name="object_detection">Object Detection</string>
+    <string name="redetect">Redetect</string>
+    <string name="standby">Standby</string>
+    <string name="logs_will_appear_here">Logs will appear here...</string>
+
+    <!-- Footer -->
+    <string name="footer_name">DivyaDrushti</string>
+
+    <!-- Language -->
     <string name="switch_to_hindi">हिंदी</string>
 
-    <string name="processing">Processing...</string>
-    <string name="detecting_color">Detecting color...</string>
-    <string name="color_detection_complete">Color detection complete.</string>
-
-    <string name="capture_success">Manual capture successful</string>
-    <string name="no_image">Please capture or select an image first.</string>
-
-    <string name="no_currency">No currency detected.</string>
-
+    <string name="ai_vision_assistant">AI Vision Assistant</string>
+    <string name="currency_detection">Currency Detection</string>
+    <string name="pick_from_gallery">Pick from Gallery</string>
+    <string name="face_recognition">Face Recognition</string>
     <string name="register_face">Register Face</string>
-    <string name="manage_faces">Manage Faces</string>
-    <string name="person_name">Person name</string>
-    <string name="relation">Relation, e.g. Friend</string>
+    <string name="manage_registered_faces">Manage Registered Faces</string>
+    <string name="detect_objects">Detect Objects</string>
+    <string name="detect_color">Detect Color</string>
+    <string name="voice_command">Voice Command</string>
+    <string name="read_text_ocr">Read Text (OCR)</string>
+    <string name="ocr_result">OCR Result</string>
+    <string name="detection_result">Detection Result</string>
 
-    <string name="cancel">Cancel</string>
-    <string name="register">Register</string>
-    <string name="delete">Delete</string>
+
 </resources>

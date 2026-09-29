@@ -17,7 +17,7 @@
             android:id="@+id/headerTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="DivyaDrishti"
+            android:text="@string/app_name"
             android:textColor="@android:color/white"
             android:textSize="24sp"
             android:textStyle="bold"
@@ -28,7 +28,7 @@
             android:id="@+id/headerSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="AI Vision Assistant"
+            android:text="@string/ai_vision_assistant"
             android:textColor="@android:color/darker_gray"
             android:textSize="14sp"
             app:layout_constraintStart_toStartOf="parent"
@@ -63,14 +63,14 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Connection"
+                        android:text="@string/connection"
                         android:textColor="@android:color/white" />
 
                     <TextView
                         android:id="@+id/connectionStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Offline"
+                        android:text="@string/offline"
                         android:textColor="@android:color/holo_red_light"
                         android:textStyle="bold" />
 
@@ -80,7 +80,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:backgroundTint="@android:color/holo_blue_light"
-                        android:text="Connect"
+                        android:text="@string/connect"
                         android:textColor="@android:color/white" />
 
                     <Button
@@ -108,14 +108,14 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Mode"
+                        android:text="@string/mode"
                         android:textColor="@android:color/white" />
 
                     <TextView
                         android:id="@+id/modeStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Manual"
+                        android:text="@string/manual"
                         android:textColor="@android:color/holo_orange_light"
                         android:textStyle="bold" />
 
@@ -125,7 +125,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:backgroundTint="@android:color/holo_blue_dark"
-                        android:text="Auto"
+                        android:text="@string/auto"
                         android:textColor="@android:color/white" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -153,7 +153,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Auto Mode Interval (seconds)"
+                    android:text="@string/auto_mode_interval"
                     android:textColor="@android:color/white" />
 
                 <EditText
@@ -192,7 +192,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Currency Detection"
+                    android:text="@string/currency_detection"
                     android:textColor="@android:color/white" />
 
                 <Switch
@@ -224,7 +224,7 @@
                     android:id="@+id/statusText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="System Idle"
+                    android:text="@string/system_idle"
                     android:textColor="@android:color/white" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -262,7 +262,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:backgroundTint="@android:color/holo_blue_bright"
-                    android:text="Capture Image"
+                    android:text="@string/capture_image"
                     android:textColor="@android:color/white" />
 
                 <Button
@@ -271,7 +271,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:backgroundTint="@android:color/holo_purple"
-                    android:text="Pick from Gallery"
+                    android:text="@string/pick_from_gallery"
                     android:textColor="@android:color/white" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -297,7 +297,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Face Recognition"
+                    android:text="@string/face_recognition"
                     android:textColor="@android:color/white"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -308,7 +308,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:backgroundTint="@android:color/holo_orange_dark"
-                    android:text="Register Face"
+                    android:text="@string/register_face"
                     android:textColor="@android:color/white" />
 
                 <Button
@@ -317,7 +317,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:backgroundTint="@android:color/holo_red_dark"
-                    android:text="Manage Registered Faces"
+                    android:text="@string/manage_registered_faces"
                     android:textColor="@android:color/white" />
 
             </LinearLayout>
@@ -347,7 +347,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:backgroundTint="@android:color/holo_green_dark"
-                    android:text="Detect Objects"
+                    android:text="@string/detect_objects"
                     android:textColor="@android:color/white" />
 
                 <Button
@@ -356,14 +356,14 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:backgroundTint="@android:color/holo_blue_dark"
-                    android:text="Detect Color"
+                    android:text="@string/detect_color"
                     android:textColor="@android:color/white" />
 
                 <Button
                     android:id="@+id/voiceButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Voice Command"/>
+                    android:text="@string/voice_command"/>
 
                 <Button
                     android:id="@+id/ocrButton"
@@ -371,7 +371,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:backgroundTint="@android:color/holo_blue_dark"
-                    android:text="Read Text (OCR)"
+                    android:text="@string/read_text_ocr"
                     android:textColor="@android:color/white" />
 
                 <TextView
@@ -380,7 +380,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:padding="8dp"
-                    android:text="OCR Result"
+                    android:text="@string/ocr_result"
                     android:textColor="@android:color/white" />
 
                 <TextView
@@ -389,7 +389,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:padding="8dp"
-                    android:text="Detection Result"
+                    android:text="@string/detection_result"
                     android:textColor="@android:color/white"
                     android:textStyle="bold" />
 

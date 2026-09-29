@@ -12,7 +12,7 @@ class SpeechManager(
     private val context: Context,
     private val listener: VoiceCommandListener
 ) {
-
+    private var recognitionLocale = Locale("en", "IN")
     private val speechRecognizer =
         SpeechRecognizer.createSpeechRecognizer(context)
 
@@ -72,6 +72,15 @@ class SpeechManager(
             }
         })
     }
+
+    fun setLanguage(language: String) {
+
+        recognitionLocale = when (language) {
+            "hi" -> Locale("hi", "IN")
+            else -> Locale("en", "IN")
+        }
+    }
+
     fun startListening() {
 
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
@@ -88,7 +97,12 @@ class SpeechManager(
 
         intent.putExtra(
             RecognizerIntent.EXTRA_LANGUAGE,
-            Locale.getDefault()
+            recognitionLocale
+        )
+
+        intent.putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+            recognitionLocale
         )
 
         intent.putExtra(

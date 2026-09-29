@@ -542,6 +542,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         )
     }
+
+
     private fun handleLanguageCommand(command: String): Boolean {
 
         val normalized = command
@@ -575,6 +577,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             else -> false
         }
     }
+
+
 
     private fun detectColorForCommand(bitmap: Bitmap, command: String) {
         thread {
@@ -1581,6 +1585,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         LanguageManager.setLanguage(language)
 
         updateTTSLanguage(language)
+
+        speechManager.setLanguage(language)
     }
 
     override fun onDestroy() {
