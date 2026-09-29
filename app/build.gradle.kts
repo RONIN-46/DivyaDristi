@@ -7,11 +7,12 @@ plugins {
 
 android {
     namespace = "com.krushna.divyadrishti"
-    compileSdk = 36
+    compileSdk = 35
     ndkVersion = "30.0.15729638"
 
     androidResources {
         noCompress.add("tflite")
+        noCompress.add("gguf")
     }
 
     externalNativeBuild {
@@ -23,7 +24,7 @@ android {
     defaultConfig {
         applicationId = "com.krushna.divyadrishti"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
         ndk {
