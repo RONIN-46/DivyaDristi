@@ -5,6 +5,9 @@ import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
+import android.util.Log
+import com.google.mlkit.common.model.RemoteModelManager
+import com.google.mlkit.nl.translate.TranslateRemoteModel
 
 class TranslationManager {
 
@@ -30,18 +33,52 @@ class TranslationManager {
         translator = Translation.getClient(options)
 
         val conditions = DownloadConditions.Builder()
-            .requireWifi()
             .build()
 
         translator!!
             .downloadModelIfNeeded(conditions)
             .addOnSuccessListener {
                 hindiReady = true
+
+                Log.d(
+                    "HINDI_MODEL",
+                    "downloadModelIfNeeded SUCCESS"
+                )
+
                 onReady()
             }
-            .addOnFailureListener {
+            .addOnFailureListener { exception ->
+
                 hindiReady = false
-                onError(it)
+
+                Log.e(
+                    "HINDI_MODEL",
+                    "downloadModelIfNeeded FAILED",
+                    exception
+                )
+
+                onError(exception)
+            }
+    }
+
+    fun checkHindiModel(
+        onResult: (Boolean) -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        val modelManager = RemoteModelManager.getInstance()
+
+        modelManager
+            .getDownloadedModels(TranslateRemoteModel::class.java)
+            .addOnSuccessListener { models ->
+
+                val hindiModelDownloaded = models.any {
+                    it.language == TranslateLanguage.HINDI
+                }
+
+                onResult(hindiModelDownloaded)
+            }
+            .addOnFailureListener { exception ->
+                onError(exception)
             }
     }
 
@@ -55,17 +92,24 @@ class TranslationManager {
             return
         }
 
-        if (!hindiReady || translator == null) {
-            onError(
-                IllegalStateException("Hindi translation model is not ready")
-            )
+        if (hindiReady && translator != null) {
+            translator!!
+                .translate(text)
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onError)
+
             return
         }
 
-        translator!!
-            .translate(text)
-            .addOnSuccessListener(onSuccess)
-            .addOnFailureListener(onError)
+        prepareHindi(
+            onReady = {
+                translator!!
+                    .translate(text)
+                    .addOnSuccessListener(onSuccess)
+                    .addOnFailureListener(onError)
+            },
+            onError = onError
+        )
     }
 
     fun close() {

@@ -270,7 +270,49 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         }
 
         translationManager = TranslationManager()
+        if (isHindi()) {
+            translationManager.prepareHindi(
+                onReady = {
+                    Log.d("TRANSLATION", "Hindi translation model ready")
+                },
+                onError = {
+                    Log.e("TRANSLATION", "Hindi translation model failed", it)
+                }
+            )
+        }
         tts = TextToSpeech(this, this)
+
+        translationManager.checkHindiModel(
+
+            onResult = { downloaded ->
+
+                Log.d(
+                    "HINDI_MODEL",
+                    "Hindi model downloaded = $downloaded"
+                )
+
+                runOnUiThread {
+
+                    Toast.makeText(
+                        this,
+                        if (downloaded)
+                            "Hindi model IS downloaded"
+                        else
+                            "Hindi model is NOT downloaded",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            },
+
+            onError = { error ->
+
+                Log.e(
+                    "HINDI_MODEL",
+                    "Could not check Hindi model",
+                    error
+                )
+            }
+        )
 
         val faceDatabase = FaceDatabase.getInstance(this)
 
@@ -1687,36 +1729,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 Toast.LENGTH_LONG
             ).show()
         }
-    }
-
-    private fun deliverResult(englishText: String) {
-
-        if (!isHindi()) {
-
-            presentResult(englishText)
-            return
-        }
-
-        translationManager.translate(
-            englishText,
-
-            onSuccess = { hindiText ->
-
-                runOnUiThread {
-
-                    presentResult(hindiText)
-                }
-            },
-
-            onError = {
-
-                runOnUiThread {
-
-                    // Safe fallback
-                    presentResult(englishText)
-                }
-            }
-        )
     }
 
     private fun switchLanguage(language: String) {
