@@ -62,6 +62,7 @@ import com.krushna.divyadrishti.model.ContextManager
 import com.krushna.divyadrishti.model.SceneContext
 import com.krushna.divyadrishti.model.DetectedObject
 import com.krushna.divyadrishti.model.ColorContext
+import com.krushna.divyadrishti.translation.TranslationManager
 import com.krushna.divyadrishti.model.CurrencyContext
 import android.widget.Toast
 
@@ -97,6 +98,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var detectColorButton: Button
     private lateinit var connectButton: Button
     private lateinit var languageButton: Button
+    private lateinit var translationManager: TranslationManager
     private lateinit var modeToggleButton: Button
     private lateinit var captureButton: Button
     private lateinit var ocrButton: Button
@@ -267,7 +269,50 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
 
+        translationManager = TranslationManager()
+        if (isHindi()) {
+            translationManager.prepareHindi(
+                onReady = {
+                    Log.d("TRANSLATION", "Hindi translation model ready")
+                },
+                onError = {
+                    Log.e("TRANSLATION", "Hindi translation model failed", it)
+                }
+            )
+        }
         tts = TextToSpeech(this, this)
+
+        translationManager.checkHindiModel(
+
+            onResult = { downloaded ->
+
+                Log.d(
+                    "HINDI_MODEL",
+                    "Hindi model downloaded = $downloaded"
+                )
+
+                runOnUiThread {
+
+                    Toast.makeText(
+                        this,
+                        if (downloaded)
+                            "Hindi model IS downloaded"
+                        else
+                            "Hindi model is NOT downloaded",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            },
+
+            onError = { error ->
+
+                Log.e(
+                    "HINDI_MODEL",
+                    "Could not check Hindi model",
+                    error
+                )
+            }
+        )
 
         val faceDatabase = FaceDatabase.getInstance(this)
 
@@ -521,23 +566,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 }
 
                 override fun onComplete(response: String) {
-
-                    runOnUiThread {
-
-                        resultText.text = response
-
-                        speakText(response)
-                    }
+                    presentResult(response)
                 }
 
                 override fun onError(message: String) {
-
-                    runOnUiThread {
-
-                        resultText.text = message
-
-                        speakText(message)
-                    }
+                    presentResult(message)
                 }
             }
         )
@@ -578,6 +611,77 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         }
     }
 
+    private fun isHindi(): Boolean {
+        return LanguageManager.getLanguage(this) == LanguageManager.HINDI
+    }
+    private fun translateObjectLabel(label: String): String {
+
+        if (!isHindi()) return label
+
+        return when (label.lowercase(Locale.ENGLISH)) {
+            "person" -> "व्यक्ति"
+            "bicycle" -> "साइकिल"
+            "car" -> "कार"
+            "motorcycle" -> "मोटरसाइकिल"
+            "airplane" -> "हवाई जहाज़"
+            "bus" -> "बस"
+            "train" -> "ट्रेन"
+            "truck" -> "ट्रक"
+            "boat" -> "नाव"
+
+            "traffic light" -> "ट्रैफिक लाइट"
+            "fire hydrant" -> "फायर हाइड्रेंट"
+            "stop sign" -> "स्टॉप साइन"
+            "parking meter" -> "पार्किंग मीटर"
+            "bench" -> "बेंच"
+
+            "bird" -> "पक्षी"
+            "cat" -> "बिल्ली"
+            "dog" -> "कुत्ता"
+            "horse" -> "घोड़ा"
+            "sheep" -> "भेड़"
+            "cow" -> "गाय"
+            "elephant" -> "हाथी"
+            "bear" -> "भालू"
+            "zebra" -> "ज़ेब्रा"
+            "giraffe" -> "जिराफ़"
+
+            "backpack" -> "बैग"
+            "umbrella" -> "छाता"
+            "handbag" -> "हैंडबैग"
+            "tie" -> "टाई"
+            "suitcase" -> "सूटकेस"
+
+            "bottle" -> "बोतल"
+            "wine glass" -> "गिलास"
+            "cup" -> "कप"
+            "fork" -> "कांटा"
+            "knife" -> "चाकू"
+            "spoon" -> "चम्मच"
+            "bowl" -> "कटोरा"
+
+            "banana" -> "केला"
+            "apple" -> "सेब"
+            "sandwich" -> "सैंडविच"
+            "orange" -> "संतरा"
+            "broccoli" -> "ब्रोकोली"
+            "carrot" -> "गाजर"
+
+            "chair" -> "कुर्सी"
+            "couch" -> "सोफ़ा"
+            "bed" -> "बिस्तर"
+            "dining table" -> "खाने की मेज़"
+            "tv" -> "टीवी"
+            "laptop" -> "लैपटॉप"
+            "mouse" -> "माउस"
+            "remote" -> "रिमोट"
+            "keyboard" -> "कीबोर्ड"
+            "cell phone" -> "मोबाइल फोन"
+
+            else -> label
+        }
+    }
+
 
 
     private fun detectColorForCommand(bitmap: Bitmap, command: String) {
@@ -601,10 +705,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 }
             }
             runOnUiThread {
-                resultText.text = response
                 statusText.text = "Color detection complete."
-                speakAndToast(response)
             }
+            presentResult(response)
         }
     }
 
@@ -813,10 +916,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                     runOnUiThread {
 
-                        resultText.text = finalCaption
-
-                        // ONE TTS OUTPUT
-                        speakText(finalCaption)
+                        presentResult(finalCaption)
 
                         statusText.text = "Processing complete."
                         detectButton.isEnabled = true
@@ -1419,24 +1519,50 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         fun formatRegion(objects: List<ObjectInfo>): String {
             if (objects.isEmpty()) return ""
 
-            val grouped = objects
-                .groupBy { it.label.lowercase(Locale.getDefault()) }
-                .map { (label, items) ->
-                    val count = items.size
+            val labels = objects.map {
+                translateObjectLabel(it.label)
+            }
+
+            val grouped = labels
+                .groupingBy { it }
+                .eachCount()
+                .map { (label, count) ->
 
                     if (count == 1) {
-                        "a $label"
+                        if (isHindi()) {
+                            "एक $label"
+                        } else {
+                            "a $label"
+                        }
                     } else {
-                        "$count ${label}${if (label.endsWith("s")) "" else "s"}"
+                        if (isHindi()) {
+                            "$count $label"
+                        } else {
+                            "$count $label"
+                        }
                     }
                 }
 
             return when {
                 grouped.size == 1 -> grouped.first()
-                grouped.size == 2 -> grouped.joinToString(" and ")
-                else -> grouped.dropLast(1).joinToString(", ") +
-                        ", and " +
-                        grouped.last()
+
+                grouped.size == 2 -> {
+                    grouped.joinToString(
+                        if (isHindi()) " और " else " and "
+                    )
+                }
+
+                else -> {
+                    if (isHindi()) {
+                        grouped.dropLast(1).joinToString(", ") +
+                                " और " +
+                                grouped.last()
+                    } else {
+                        grouped.dropLast(1).joinToString(", ") +
+                                ", and " +
+                                grouped.last()
+                    }
+                }
             }
         }
 
@@ -1458,20 +1584,41 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
         val parts = mutableListOf<String>()
 
-        if (left.isNotEmpty()) {
-            parts.add("to your left, I see $left")
+        if (isHindi()) {
+
+            if (left.isNotEmpty()) {
+                parts.add("आपके बाईं ओर $left है")
+            }
+
+            if (center.isNotEmpty()) {
+                parts.add("आपके सामने $center है")
+            }
+
+            if (right.isNotEmpty()) {
+                parts.add("आपके दाईं ओर $right है")
+            }
+
+        } else {
+
+            if (left.isNotEmpty()) {
+                parts.add("To your left, I see $left")
+            }
+
+            if (center.isNotEmpty()) {
+                parts.add("In front of you, there is $center")
+            }
+
+            if (right.isNotEmpty()) {
+                parts.add("To your right, I see $right")
+            }
         }
 
-        if (center.isNotEmpty()) {
-            parts.add("in front of you, there is $center")
+        if (parts.isEmpty()) {
+            return ""
         }
 
-        if (right.isNotEmpty()) {
-            parts.add("to your right, I see $right")
-        }
-
-        return if (parts.isEmpty()) {
-            ""
+        return if (isHindi()) {
+            parts.joinToString("। ") + "।"
         } else {
             parts.joinToString(", ") + "."
         }
@@ -1553,7 +1700,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     override fun onInit(status: Int) {
+
         if (status == TextToSpeech.SUCCESS) {
+
             updateTTSLanguage(
                 LanguageManager.getLanguage(this)
             )
@@ -1562,19 +1711,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
     private fun updateTTSLanguage(language: String) {
 
-        val locale = when (language) {
-            LanguageManager.HINDI -> Locale("hi", "IN")
-            else -> Locale.US
+        val locale = if (language == LanguageManager.HINDI) {
+            Locale("hi", "IN")
+        } else {
+            Locale("en", "IN")
         }
 
         val result = tts.setLanguage(locale)
 
-        if (result == TextToSpeech.LANG_MISSING_DATA ||
-            result == TextToSpeech.LANG_NOT_SUPPORTED) {
-
+        if (
+            result == TextToSpeech.LANG_MISSING_DATA ||
+            result == TextToSpeech.LANG_NOT_SUPPORTED
+        ) {
             Toast.makeText(
                 this,
-                "Hindi TTS is not available",
+                "Selected TTS language is not available",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -1586,7 +1737,33 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
         updateTTSLanguage(language)
 
+        if (language == LanguageManager.HINDI) {
+
+            translationManager.prepareHindi(
+                onReady = {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            "Hindi translation ready",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                onError = {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            "Hindi translation model download failed",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            )
+        }
+
         speechManager.setLanguage(language)
+
+
     }
 
     override fun onDestroy() {
@@ -1601,6 +1778,41 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         super.onDestroy()
     }
 
+    private fun presentResult(englishText: String) {
+
+        if (englishText.isBlank()) return
+
+        if (!isHindi()) {
+
+            runOnUiThread {
+                resultText.text = englishText
+                speakAndToast(englishText)
+            }
+
+            return
+        }
+
+        translationManager.translate(
+            englishText,
+
+            onSuccess = { hindiText ->
+
+                runOnUiThread {
+                    resultText.text = hindiText
+                    speakAndToast(hindiText)
+                }
+            },
+
+            onError = {
+
+                // Fallback to English if translation fails
+                runOnUiThread {
+                    resultText.text = englishText
+                    speakAndToast(englishText)
+                }
+            }
+        )
+    }
     private fun speakAndToast(message: String) {
         runOnUiThread {
             if (message.isBlank()) return@runOnUiThread
