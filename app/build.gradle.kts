@@ -89,6 +89,7 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("com.google.mlkit:face-detection:16.1.7")
+    implementation ("com.google.mlkit:translate:17.0.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
