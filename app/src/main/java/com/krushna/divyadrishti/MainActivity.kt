@@ -178,7 +178,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 if (bitmap == null) {
                     Toast.makeText(
                         this,
-                        "Unable to load image",
+                        getString(R.string.msg_unable_to_load_image),
                         Toast.LENGTH_SHORT
                     ).show()
                     return@let
@@ -191,7 +191,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 // Clear old OCR result
                 ocrResultText.text = ""
 
-                statusText.text = "Image selected. Processing..."
+                statusText.text = getString(R.string.msg_image_selected_processing)
 
                 // Automatically run YOLO + Scene + HSV + Face
                 processAndSpeak(bitmap)
@@ -209,7 +209,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                 Toast.makeText(
                     this,
-                    "Failed to load image: ${e.message}",
+                    getString(R.string.msg_failed_to_load_image, e.message ?: ""),
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -349,7 +349,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         currencyToggleButton.setOnCheckedChangeListener { _, isChecked ->
             isCurrencyDetectionEnabled = isChecked
             val message =
-                if (isChecked) "Currency detection enabled" else "Currency detection disabled"
+                if (isChecked) getString(R.string.msg_currency_detection_enabled)
+                else getString(R.string.msg_currency_detection_disabled)
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
             statusText.text = message
         }
@@ -385,7 +386,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                 Toast.makeText(
                     this,
-                    "Capture or pick an image first",
+                    getString(R.string.msg_capture_or_pick_image_first),
                     Toast.LENGTH_SHORT
                 ).show()
 
@@ -408,7 +409,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                         Toast.makeText(
                             this@MainActivity,
-                            "No registered faces",
+                            getString(R.string.msg_no_registered_faces),
                             Toast.LENGTH_SHORT
                         ).show()
 
@@ -420,22 +421,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     }.toTypedArray()
 
                     AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Registered Faces")
+                        .setTitle(getString(R.string.title_registered_faces))
                         .setItems(personNames) { _, position ->
 
                             val selectedPerson =
                                 persons[position]
 
                             AlertDialog.Builder(this@MainActivity)
-                                .setTitle("Delete Registered Face")
+                                .setTitle(getString(R.string.title_delete_registered_face))
                                 .setMessage(
-                                    "Delete ${selectedPerson.name} (${selectedPerson.relation})?"
+                                    getString(
+                                        R.string.msg_delete_registered_face_confirm,
+                                        selectedPerson.name,
+                                        selectedPerson.relation
+                                    )
                                 )
                                 .setNegativeButton(
-                                    "Cancel",
+                                    getString(R.string.cancel),
                                     null
                                 )
-                                .setPositiveButton("Delete") { _, _ ->
+                                .setPositiveButton(getString(R.string.delete)) { _, _ ->
 
                                     lifecycleScope.launch {
 
@@ -447,7 +452,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                                             Toast.makeText(
                                                 this@MainActivity,
-                                                "${selectedPerson.name} deleted",
+                                                getString(
+                                                    R.string.msg_person_deleted,
+                                                    selectedPerson.name
+                                                ),
                                                 Toast.LENGTH_SHORT
                                             ).show()
 
@@ -455,7 +463,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                                             Toast.makeText(
                                                 this@MainActivity,
-                                                "Delete failed: ${e.message}",
+                                                getString(
+                                                    R.string.msg_delete_failed,
+                                                    e.message ?: ""
+                                                ),
                                                 Toast.LENGTH_LONG
                                             ).show()
                                         }
@@ -469,7 +480,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                     Toast.makeText(
                         this@MainActivity,
-                        "Failed to load registered faces: ${e.message}",
+                        getString(
+                            R.string.msg_failed_load_registered_faces,
+                            e.message ?: ""
+                        ),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -481,14 +495,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             if (bitmap != null) {
                 processAndSpeak(bitmap)
             } else {
-                Toast.makeText(this, "No image available to process", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    getString(R.string.msg_no_image_to_process),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
         detectColorButton.setOnClickListener {
             val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
             if (bitmap == null) {
-                speakAndToast("Please capture or select an image first.")
+                speakAndToast(getString(R.string.msg_please_capture_or_select_image))
             } else {
                 detectColorForCommand(bitmap, "")
             }
@@ -512,13 +530,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         }
 
         ocrButton.setOnClickListener {
+            val handleOcrResult: (String) -> Unit = { text ->
+                if (isValidOCRText(text)) {
+                    ocrResultText.text = text
+                    presentResult(text)
+                } else {
+                    val noTextMsg = getString(R.string.msg_no_text_found)
+                    ocrResultText.text = noTextMsg
+                    speakAndToast(noTextMsg)
+                }
+            }
+
             if (selectedImageUri != null) {
                 // CASE 1: Use URI if image was picked from Gallery
                 ocrManager.recognizeFromUri(
                     context = this,
                     uri = selectedImageUri!!,
-                    onResult = { text -> speakAndToast(text) },
-                    onError = { e -> speakAndToast("Error: ${e.message}") }
+                    onResult = handleOcrResult,
+                    onError = { e -> speakAndToast(getString(R.string.msg_error_prefix, e.message ?: "")) }
                 )
             } else {
                 // CASE 2: Use Bitmap if image was captured from ESP32
@@ -526,13 +555,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 if (bitmap != null) {
                     ocrManager.recognize(
                         bitmap = bitmap,
-                        onResult = { text ->
-                            speakAndToast(text)
-                            ocrResultText.text = text},
-                        onError = { e -> speakAndToast("Error: ${e.message}") }
+                        onResult = handleOcrResult,
+                        onError = { e -> speakAndToast(getString(R.string.msg_error_prefix, e.message ?: "")) }
                     )
                 } else {
-                    speakAndToast("Please capture or select an image first.")
+                    speakAndToast(getString(R.string.msg_please_capture_or_select_image))
                 }
             }
         }
@@ -686,7 +713,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
     private fun detectColorForCommand(bitmap: Bitmap, command: String) {
         thread {
-            runOnUiThread { statusText.text = "Detecting color..." }
+            runOnUiThread { statusText.text = getString(R.string.msg_detecting_color) }
             val response = if (command.isBlank()) {
                 colorResponse(ColorDetector.analyze(bitmap))
             } else {
@@ -699,13 +726,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 }
                 when {
                     matchingObject != null ->
-                        "The ${matchingObject.label} appears ${matchingObject.color.lowercase(Locale.getDefault())}."
+                        getString(
+                            R.string.msg_object_color_appears,
+                            matchingObject.label,
+                            matchingObject.color.lowercase(Locale.getDefault())
+                        )
                     detections.isNotEmpty() -> colorResponse(ColorDetector.analyze(bitmap))
-                    else -> "I could not find an object clearly enough to determine its color."
+                    else -> getString(R.string.msg_color_object_not_found)
                 }
             }
             runOnUiThread {
-                statusText.text = "Color detection complete."
+                statusText.text = getString(R.string.msg_color_detection_complete)
             }
             presentResult(response)
         }
@@ -713,9 +744,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
     private fun colorResponse(result: ColorDetector.ColorResult): String =
         if (result.name == "Unknown") {
-            "I could not determine the color clearly."
+            getString(R.string.msg_color_unknown)
         } else {
-            "The color appears ${result.name.lowercase(Locale.getDefault())}."
+            getString(R.string.msg_color_appears, result.name.lowercase(Locale.getDefault()))
         }
 
     override fun onError(error: String) {
@@ -731,7 +762,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             try {
                 runOnUiThread {
                     debugText.visibility = View.VISIBLE
-                    debugText.text = "Loading models..."
+                    debugText.text = getString(R.string.msg_loading_models)
                 }
                 yoloInterpreter = Interpreter(loadModelFile("yolov8n_float32.tflite"))
                 placesInterpreter = Interpreter(loadModelFile("places365_float32.tflite"))
@@ -744,23 +775,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 currencyLabels = assets.open("Currency_labels.txt").bufferedReader().readLines()
 
                 runOnUiThread {
-                    statusText.text = "All models loaded successfully."
-                    debugText.text = "Models loaded."
+                    statusText.text = getString(R.string.msg_all_models_loaded)
+                    debugText.text = getString(R.string.msg_models_loaded)
                     detectButton.isEnabled = true
                     currencyToggleButton.isEnabled = true
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    statusText.text = "Error loading models"
+                    statusText.text = getString(R.string.msg_error_loading_models)
                     debugText.visibility = View.VISIBLE
-                    debugText.text = "Model Load Error: ${e.message}"
+                    debugText.text = getString(R.string.msg_error_prefix, e.message ?: "")
                 }
             }
         }
     }
 
     private fun connectToESP32WiFi() {
-        statusText.text = "Connecting to ESP32..."
+        statusText.text = getString(R.string.msg_connecting_esp32)
         thread {
             try {
                 val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
@@ -777,29 +808,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 Thread.sleep(5000)
 
                 runOnUiThread {
-                    statusText.text = "Connected to ESP32-CAM"
-                    connectionStatus.text = "Online"
+                    statusText.text = getString(R.string.msg_connected_esp32)
+                    connectionStatus.text = getString(R.string.online)
                     connectionStatus.setTextColor(
                         ContextCompat.getColor(
                             this,
                             android.R.color.holo_green_light
                         )
                     )
-                    cameraStatusText.text = "Connected"
+                    cameraStatusText.text = getString(R.string.connected)
                     statusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
                     cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    statusText.text = "Connection failed: ${e.message}"
-                    connectionStatus.text = "Offline"
+                    statusText.text = getString(R.string.msg_connection_failed, e.message ?: "")
+                    connectionStatus.text = getString(R.string.offline)
                     connectionStatus.setTextColor(
                         ContextCompat.getColor(
                             this,
                             android.R.color.holo_red_light
                         )
                     )
-                    cameraStatusText.text = "Disconnected"
+                    cameraStatusText.text = getString(R.string.disconnected)
                     statusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
                     cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
                 }
@@ -808,7 +839,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     private fun captureImageFromESP32() {
-        statusText.text = "Capturing image..."
+        statusText.text = getString(R.string.msg_capturing_image)
         thread {
             try {
                 val url = URL(esp32CaptureURL)
@@ -833,8 +864,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                         imageView.setImageBitmap(originalBitmap)
 
                         statusText.text =
-                            if (isAutoMode) "Auto mode: Image captured"
-                            else "Manual capture successful"
+                            if (isAutoMode) getString(R.string.msg_auto_mode_image_captured)
+                            else getString(R.string.msg_manual_capture_successful)
 
                         // Send the original image for processing
                         processAndSpeak(originalBitmap)
@@ -842,12 +873,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                 } else {
                     runOnUiThread {
-                        statusText.text = "Capture failed: HTTP ${connection.responseCode}"
+                        statusText.text = getString(R.string.msg_capture_failed_http, connection.responseCode)
                     }
                 }
                 connection.disconnect()
             } catch (e: Exception) {
-                runOnUiThread { statusText.text = "Capture error: ${e.message}" }
+                runOnUiThread { statusText.text = getString(R.string.msg_capture_error, e.message ?: "") }
             }
         }
     }
@@ -859,7 +890,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             try {
 
                 runOnUiThread {
-                    statusText.text = "Processing..."
+                    statusText.text = getString(R.string.msg_processing)
                     detectButton.isEnabled = false
                     debugText.visibility = View.GONE
                 }
@@ -906,7 +937,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                         if (ocrText.isNotBlank()) {
 
                             parts.add(
-                                "The text in the image says \"$ocrText\"."
+                                getString(R.string.msg_ocr_text_format, ocrText)
                             )
                         }
 
@@ -918,7 +949,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                         presentResult(finalCaption)
 
-                        statusText.text = "Processing complete."
+                        statusText.text = getString(R.string.msg_processing_complete)
                         detectButton.isEnabled = true
                     }
                 }
@@ -960,7 +991,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                         }
 
                         runOnUiThread {
-                            ocrResultText.text = ocrText
+                            ocrResultText.text = if (ocrText.isNotBlank()) ocrText else getString(R.string.msg_no_text_found)
                         }
 
                         finishIfReady()
@@ -1032,10 +1063,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                                             ""
 
                                         "Unknown person" ->
-                                            "The person is unknown."
+                                            getString(R.string.msg_person_unknown)
 
                                         else ->
-                                            "This is $faceResult."
+                                            getString(R.string.msg_person_known, faceResult)
                                     }
 
                                 faceDone = true
@@ -1071,13 +1102,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 runOnUiThread {
 
                     statusText.text =
-                        "Error: ${e.message}"
+                        getString(R.string.msg_error_prefix, e.message ?: "")
 
                     debugText.visibility =
                         View.VISIBLE
 
                     debugText.text =
-                        "Processing Error: ${e.message}"
+                        getString(R.string.msg_error_prefix, e.message ?: "")
 
                     detectButton.isEnabled = true
                 }
@@ -1149,19 +1180,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             handler.post(autoCaptureRunnable)
             Toast.makeText(
                 this,
-                "Auto mode enabled (${autoCaptureInterval / 1000}s interval)",
+                getString(R.string.msg_auto_mode_enabled, autoCaptureInterval / 1000),
                 Toast.LENGTH_SHORT
             ).show()
         } else {
             handler.removeCallbacks(autoCaptureRunnable)
-            Toast.makeText(this, "Manual mode enabled", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_manual_mode_enabled), Toast.LENGTH_SHORT).show()
         }
         updateUIForMode()
     }
 
     private fun updateUIForMode() {
-        modeToggleButton.text = if (isAutoMode) "Manual" else "Auto"
-        modeStatus.text = if (isAutoMode) "Auto" else "Manual"
+        modeToggleButton.text = if (isAutoMode) getString(R.string.manual) else getString(R.string.auto)
+        modeStatus.text = if (isAutoMode) getString(R.string.auto) else getString(R.string.manual)
         modeStatus.setTextColor(
             ContextCompat.getColor(
                 this,
@@ -1169,7 +1200,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             )
         )
         captureButton.isEnabled = !isAutoMode
-        statusText.text = if (isAutoMode) "Auto Mode Active" else "Manual Mode Active"
+        statusText.text = if (isAutoMode) getString(R.string.msg_auto_mode_active) else getString(R.string.msg_manual_mode_active)
         autoModeSettingsCard.visibility = if (isAutoMode) View.VISIBLE else View.GONE
     }
 
@@ -1185,7 +1216,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private fun processImage(bitmap: Bitmap): String {
         if (isCurrencyDetectionEnabled) {
             val currencyResult = detectCurrency(bitmap)
-            return if (currencyResult.isNotEmpty()) currencyResult else "No currency detected."
+            return if (currencyResult.isNotEmpty()) currencyResult else getString(R.string.msg_no_currency_detected)
         }
 
         val (scene, confidence) = predictScene(bitmap)
@@ -1311,12 +1342,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                         notes = detectedNotes
                     )
                 )
-                return counts.map { (label, count) ->
+                val detectedList = counts.map { (label, count) ->
                     if (count > 1)
-                        "$count notes of $label"
+                        getString(R.string.msg_currency_notes_plural, count, label)
                     else
-                        "$label note"
-                }.joinToString(", ") + " detected."
+                        getString(R.string.msg_currency_note_single, label)
+                }.joinToString(", ")
+                return getString(R.string.msg_currency_detected_suffix, detectedList)
             }
             ContextManager.updateCurrency(
                 CurrencyContext()
@@ -1519,64 +1551,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         fun formatRegion(objects: List<ObjectInfo>): String {
             if (objects.isEmpty()) return ""
 
-            val labels = objects.map {
-                translateObjectLabel(it.label)
-            }
+            val labels = objects.map { it.label }
 
             val grouped = labels
                 .groupingBy { it }
                 .eachCount()
                 .map { (label, count) ->
-
-                    if (count == 1) {
-                        if (isHindi()) {
-                            "एक $label"
-                        } else {
-                            "a $label"
-                        }
-                    } else {
-                        if (isHindi()) {
-                            "$count $label"
-                        } else {
-                            "$count $label"
-                        }
-                    }
+                    if (count == 1) "a $label" else "$count ${label}s"
                 }
 
             return when {
                 grouped.size == 1 -> grouped.first()
-
-                grouped.size == 2 -> {
-                    grouped.joinToString(
-                        if (isHindi()) " और " else " and "
-                    )
-                }
-
-                else -> {
-                    if (isHindi()) {
-                        grouped.dropLast(1).joinToString(", ") +
-                                " और " +
-                                grouped.last()
-                    } else {
-                        grouped.dropLast(1).joinToString(", ") +
-                                ", and " +
-                                grouped.last()
-                    }
-                }
+                grouped.size == 2 -> grouped.joinToString(" and ")
+                else -> grouped.dropLast(1).joinToString(", ") + ", and " + grouped.last()
             }
         }
 
-        val leftObjects = detections.filter {
-            it.xCenterNorm < 0.33f
-        }
-
-        val centerObjects = detections.filter {
-            it.xCenterNorm in 0.33f..0.67f
-        }
-
-        val rightObjects = detections.filter {
-            it.xCenterNorm > 0.67f
-        }
+        val leftObjects = detections.filter { it.xCenterNorm < 0.33f }
+        val centerObjects = detections.filter { it.xCenterNorm in 0.33f..0.67f }
+        val rightObjects = detections.filter { it.xCenterNorm > 0.67f }
 
         val left = formatRegion(leftObjects)
         val center = formatRegion(centerObjects)
@@ -1584,44 +1577,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
         val parts = mutableListOf<String>()
 
-        if (isHindi()) {
-
-            if (left.isNotEmpty()) {
-                parts.add("आपके बाईं ओर $left है")
-            }
-
-            if (center.isNotEmpty()) {
-                parts.add("आपके सामने $center है")
-            }
-
-            if (right.isNotEmpty()) {
-                parts.add("आपके दाईं ओर $right है")
-            }
-
-        } else {
-
-            if (left.isNotEmpty()) {
-                parts.add("To your left, I see $left")
-            }
-
-            if (center.isNotEmpty()) {
-                parts.add("In front of you, there is $center")
-            }
-
-            if (right.isNotEmpty()) {
-                parts.add("To your right, I see $right")
-            }
+        if (left.isNotEmpty()) {
+            parts.add("To your left, I see $left")
+        }
+        if (center.isNotEmpty()) {
+            parts.add("In front of you, there is $center")
+        }
+        if (right.isNotEmpty()) {
+            parts.add("To your right, I see $right")
         }
 
         if (parts.isEmpty()) {
             return ""
         }
 
-        return if (isHindi()) {
-            parts.joinToString("। ") + "।"
-        } else {
-            parts.joinToString(", ") + "."
-        }
+        return parts.joinToString(", ") + "."
     }
 
     private fun getObjectPosition(xCenter: Float): String {
@@ -1635,11 +1605,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private fun showFaceRegistrationDialog(bitmap: Bitmap) {
 
         val nameInput = EditText(this).apply {
-            hint = "Person name"
+            hint = getString(R.string.hint_person_name)
         }
 
         val relationInput = EditText(this).apply {
-            hint = "Relation, e.g. Friend"
+            hint = getString(R.string.hint_relation)
         }
 
         val container = LinearLayout(this).apply {
@@ -1659,9 +1629,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         }
 
         AlertDialog.Builder(this)
-            .setTitle("Register Face")
+            .setTitle(getString(R.string.title_register_face))
             .setView(container)
-            .setPositiveButton("Register") { _, _ ->
+            .setPositiveButton(getString(R.string.register)) { _, _ ->
 
                 faceRegistrationFlow.register(
                     bitmap = bitmap,
@@ -1673,7 +1643,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                             Toast.makeText(
                                 this,
-                                "Face registered. ID: $personId",
+                                getString(R.string.msg_face_registered, personId.toString()),
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -1691,7 +1661,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     }
                 )
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
 
@@ -1725,7 +1695,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         ) {
             Toast.makeText(
                 this,
-                "Selected TTS language is not available",
+                getString(R.string.msg_tts_language_not_available),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -1744,7 +1714,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     runOnUiThread {
                         Toast.makeText(
                             this,
-                            "Hindi translation ready",
+                            getString(R.string.msg_hindi_translation_ready),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -1753,7 +1723,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     runOnUiThread {
                         Toast.makeText(
                             this,
-                            "Hindi translation model download failed",
+                            getString(R.string.msg_hindi_translation_failed),
                             Toast.LENGTH_LONG
                         ).show()
                     }

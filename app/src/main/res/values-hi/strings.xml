@@ -64,4 +64,81 @@
     <string name="ocr_result">OCR परिणाम</string>
     <string name="detection_result">पहचान परिणाम</string>
 
+    <!-- MainActivity Dynamic Messages -->
+    <string name="msg_unable_to_load_image">छवि लोड करने में असमर्थ</string>
+    <string name="msg_image_selected_processing">छवि चुनी गई। प्रक्रिया जारी है...</string>
+    <string name="msg_failed_to_load_image">छवि लोड करने में विफल: %1$s</string>
+
+    <string name="msg_currency_detection_enabled">मुद्रा पहचान सक्षम की गई</string>
+    <string name="msg_currency_detection_disabled">मुद्रा पहचान अक्षम की गई</string>
+
+    <string name="msg_capture_or_pick_image_first">पहले एक छवि लें या चुनें</string>
+    <string name="msg_no_registered_faces">कोई पंजीकृत चेहरा नहीं है</string>
+    <string name="title_registered_faces">पंजीकृत चेहरे</string>
+    <string name="title_delete_registered_face">पंजीकृत चेहरा हटाएँ</string>
+    <string name="msg_delete_registered_face_confirm">क्या आप %1$s (%2$s) को हटाना चाहते हैं?</string>
+    <string name="cancel">रद्द करें</string>
+    <string name="delete">हटाएं</string>
+    <string name="msg_person_deleted">%1$s हटा दिया गया</string>
+    <string name="msg_delete_failed">हटाना विफल रहा: %1$s</string>
+    <string name="msg_failed_load_registered_faces">पंजीकृत चेहरे लोड करने में विफल: %1$s</string>
+
+    <string name="msg_no_image_to_process">प्रोसेस करने के लिए कोई छवि उपलब्ध नहीं है</string>
+    <string name="msg_please_capture_or_select_image">कृपया पहले एक छवि लें या चुनें।</string>
+    <string name="msg_error_prefix">त्रुटि: %1$s</string>
+
+    <string name="msg_detecting_color">रंग पहचाना जा रहा है...</string>
+    <string name="msg_object_color_appears">%1$s का रंग %2$s दिखाई दे रहा है।</string>
+    <string name="msg_color_object_not_found">मुझे कोई वस्तु स्पष्ट रूप से नहीं मिली जिसका रंग बताया जा सके।</string>
+    <string name="msg_color_detection_complete">रंग पहचान पूरी हुई।</string>
+    <string name="msg_color_unknown">मैं स्पष्ट रूप से रंग नहीं पहचान सका।</string>
+    <string name="msg_color_appears">रंग %1$s दिखाई दे रहा है।</string>
+
+    <string name="msg_loading_models">मॉडल लोड हो रहे हैं...</string>
+    <string name="msg_all_models_loaded">सभी मॉडल सफलतापूर्वक लोड हो गए।</string>
+    <string name="msg_models_loaded">मॉडल लोड हो गए।</string>
+    <string name="msg_error_loading_models">मॉडल लोड करने में त्रुटि</string>
+
+    <string name="msg_connecting_esp32">ESP32 से कनेक्ट हो रहा है...</string>
+    <string name="msg_connected_esp32">ESP32-CAM से कनेक्ट हो गया</string>
+    <string name="msg_connection_failed">कनेक्शन विफल: %1$s</string>
+    <string name="msg_capturing_image">छवि कैप्चर की जा रही है...</string>
+    <string name="msg_auto_mode_image_captured">ऑटो मोड: छवि कैप्चर की गई</string>
+    <string name="msg_manual_capture_successful">मैनुअल कैप्चर सफल</string>
+    <string name="msg_capture_failed_http">कैप्चर विफल: HTTP %1$d</string>
+    <string name="msg_capture_error">कैप्चर त्रुटि: %1$s</string>
+
+    <string name="msg_processing">प्रक्रिया जारी है...</string>
+    <string name="msg_processing_complete">प्रक्रिया पूरी हुई।</string>
+    <string name="msg_ocr_text_format">छवि में लिखा पाठ कहता है \"%1$s\"।</string>
+    <string name="msg_person_unknown">व्यक्ति अज्ञात है।</string>
+    <string name="msg_person_known">यह %1$s है।</string>
+
+    <string name="msg_auto_mode_enabled">ऑटो मोड सक्षम (%1$d सेकंड अंतराल)</string>
+    <string name="msg_manual_mode_enabled">मैनुअल मोड सक्षम</string>
+    <string name="msg_auto_mode_active">ऑटो मोड सक्रिय</string>
+    <string name="msg_manual_mode_active">मैनुअल मोड सक्रिय</string>
+
+    <string name="msg_no_currency_detected">कोई मुद्रा नहीं मिली।</string>
+    <string name="msg_scene_pretty_sure">मुझे पूरा यकीन है कि आप %1$s में हैं।</string>
+    <string name="msg_scene_fairly_sure">मुझे काफी हद तक यकीन है कि यह %1$s है।</string>
+    <string name="msg_scene_think_might_be">मुझे लगता है कि यह %1$s हो सकता है।</string>
+    <string name="msg_no_major_objects">मुझे कोई अन्य मुख्य वस्तुएं नहीं दिख रही हैं।</string>
+
+    <string name="msg_currency_note_single">%1$s का 1 नोट</string>
+    <string name="msg_currency_notes_plural">%2$s के %1$d नोट</string>
+    <string name="msg_currency_detected_suffix">%1$s पाए गए।</string>
+
+    <string name="hint_person_name">व्यक्ति का नाम</string>
+    <string name="hint_relation">संबंध, जैसे मित्र</string>
+    <string name="title_register_face">चेहरा पंजीकृत करें</string>
+    <string name="register">पंजीकृत करें</string>
+    <string name="msg_face_registered">चेहरा पंजीकृत हो गया। आईडी: %1$s</string>
+
+    <string name="msg_hindi_translation_ready">हिंदी अनुवाद तैयार है</string>
+    <string name="msg_hindi_translation_failed">हिंदी अनुवाद मॉडल डाउनलोड विफल</string>
+    <string name="msg_tts_language_not_available">चयनित टीटीएस भाषा उपलब्ध नहीं है</string>
+
+    <string name="msg_no_text_found">इस छवि में कोई पाठ नहीं मिला।</string>
+
 </resources>
