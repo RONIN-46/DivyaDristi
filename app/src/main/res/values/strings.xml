@@ -65,5 +65,81 @@
     <string name="ocr_result">OCR Result</string>
     <string name="detection_result">Detection Result</string>
 
+    <!-- MainActivity Dynamic Messages -->
+    <string name="msg_unable_to_load_image">Unable to load image</string>
+    <string name="msg_image_selected_processing">Image selected. Processing...</string>
+    <string name="msg_failed_to_load_image">Failed to load image: %1$s</string>
+
+    <string name="msg_currency_detection_enabled">Currency detection enabled</string>
+    <string name="msg_currency_detection_disabled">Currency detection disabled</string>
+
+    <string name="msg_capture_or_pick_image_first">Capture or pick an image first</string>
+    <string name="msg_no_registered_faces">No registered faces</string>
+    <string name="title_registered_faces">Registered Faces</string>
+    <string name="title_delete_registered_face">Delete Registered Face</string>
+    <string name="msg_delete_registered_face_confirm">Delete %1$s (%2$s)?</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="msg_person_deleted">%1$s deleted</string>
+    <string name="msg_delete_failed">Delete failed: %1$s</string>
+    <string name="msg_failed_load_registered_faces">Failed to load registered faces: %1$s</string>
+
+    <string name="msg_no_image_to_process">No image available to process</string>
+    <string name="msg_please_capture_or_select_image">Please capture or select an image first.</string>
+    <string name="msg_error_prefix">Error: %1$s</string>
+
+    <string name="msg_detecting_color">Detecting color...</string>
+    <string name="msg_object_color_appears">The %1$s appears %2$s.</string>
+    <string name="msg_color_object_not_found">I could not find an object clearly enough to determine its color.</string>
+    <string name="msg_color_detection_complete">Color detection complete.</string>
+    <string name="msg_color_unknown">I could not determine the color clearly.</string>
+    <string name="msg_color_appears">The color appears %1$s.</string>
+
+    <string name="msg_loading_models">Loading models...</string>
+    <string name="msg_all_models_loaded">All models loaded successfully.</string>
+    <string name="msg_models_loaded">Models loaded.</string>
+    <string name="msg_error_loading_models">Error loading models</string>
+
+    <string name="msg_connecting_esp32">Connecting to ESP32...</string>
+    <string name="msg_connected_esp32">Connected to ESP32-CAM</string>
+    <string name="msg_connection_failed">Connection failed: %1$s</string>
+    <string name="msg_capturing_image">Capturing image...</string>
+    <string name="msg_auto_mode_image_captured">Auto mode: Image captured</string>
+    <string name="msg_manual_capture_successful">Manual capture successful</string>
+    <string name="msg_capture_failed_http">Capture failed: HTTP %1$d</string>
+    <string name="msg_capture_error">Capture error: %1$s</string>
+
+    <string name="msg_processing">Processing...</string>
+    <string name="msg_processing_complete">Processing complete.</string>
+    <string name="msg_ocr_text_format">The text in the image says \"%1$s\".</string>
+    <string name="msg_person_unknown">The person is unknown.</string>
+    <string name="msg_person_known">This is %1$s.</string>
+
+    <string name="msg_auto_mode_enabled">Auto mode enabled (%1$ds interval)</string>
+    <string name="msg_manual_mode_enabled">Manual mode enabled</string>
+    <string name="msg_auto_mode_active">Auto Mode Active</string>
+    <string name="msg_manual_mode_active">Manual Mode Active</string>
+
+    <string name="msg_no_currency_detected">No currency detected.</string>
+    <string name="msg_scene_pretty_sure">I\'m pretty sure you are in a %1$s.</string>
+    <string name="msg_scene_fairly_sure">I\'m fairly sure this is a %1$s.</string>
+    <string name="msg_scene_think_might_be">I think this might be a %1$s.</string>
+    <string name="msg_no_major_objects">I don\'t see any other major objects.</string>
+
+    <string name="msg_currency_note_single">%1$s note</string>
+    <string name="msg_currency_notes_plural">%1$d notes of %2$s</string>
+    <string name="msg_currency_detected_suffix">%1$s detected.</string>
+
+    <string name="hint_person_name">Person name</string>
+    <string name="hint_relation">Relation, e.g. Friend</string>
+    <string name="title_register_face">Register Face</string>
+    <string name="register">Register</string>
+    <string name="msg_face_registered">Face registered. ID: %1$s</string>
+
+    <string name="msg_hindi_translation_ready">Hindi translation ready</string>
+    <string name="msg_hindi_translation_failed">Hindi translation model download failed</string>
+    <string name="msg_tts_language_not_available">Selected TTS language is not available</string>
+
+    <string name="msg_no_text_found">No text found in this image.</string>
 
 </resources>
