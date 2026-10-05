@@ -51,19 +51,42 @@
 
     <!-- Language -->
     <string name="switch_to_hindi">हिंदी</string>
+    <string name="language_toggle_label">EN | हिंदी</string>
 
     <string name="ai_vision_assistant">AI Vision Assistant</string>
+    <string name="ai_vision_assistant_caps">AI VISION ASSISTANT</string>
+    <string name="what_do_you_want_to_do">What do you want to do?</string>
+    <string name="tap_and_speak_command">Tap and speak a command</string>
     <string name="currency_detection">Currency Detection</string>
+    <string name="recognize_currency">Recognize\nCurrency</string>
     <string name="pick_from_gallery">Pick from Gallery</string>
     <string name="face_recognition">Face Recognition</string>
     <string name="register_face">Register Face</string>
     <string name="manage_registered_faces">Manage Registered Faces</string>
+    <string name="manage_faces">Manage\nFaces</string>
+    <string name="card_detect_objects">Detect\nObjects</string>
+    <string name="card_recognize_currency">Recognize\nCurrency</string>
+    <string name="card_read_text_ocr">Read Text\n(OCR)</string>
+    <string name="card_detect_color">Detect\nColor</string>
+    <string name="card_register_face">Register\nFace</string>
+    <string name="card_manage_faces">Manage\nFaces</string>
     <string name="detect_objects">Detect Objects</string>
     <string name="detect_color">Detect Color</string>
     <string name="voice_command">Voice Command</string>
     <string name="read_text_ocr">Read Text (OCR)</string>
     <string name="ocr_result">OCR Result</string>
     <string name="detection_result">Detection Result</string>
+    <string name="result_title">Result</string>
+    <string name="detection_result_placeholder">Detection result will appear here.</string>
+    <string name="btn_capture_image">CAPTURE IMAGE</string>
+    <string name="btn_pick_gallery">PICK GALLERY</string>
+    <string name="btn_connect_caps">CONNECT</string>
+    <string name="btn_auto_caps">AUTO</string>
+    <string name="btn_manual_caps">MANUAL</string>
+    <string name="status_offline_dot">• Offline</string>
+    <string name="status_online_dot">• Online</string>
+    <string name="status_manual_dropdown">Manual ▾</string>
+    <string name="status_auto_dropdown">Auto ▾</string>
 
     <!-- MainActivity Dynamic Messages -->
     <string name="msg_unable_to_load_image">Unable to load image</string>

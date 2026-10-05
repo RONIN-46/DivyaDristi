@@ -50,19 +50,42 @@
 
     <!-- Language -->
     <string name="switch_to_hindi">English</string>
+    <string name="language_toggle_label">EN | हिंदी</string>
 
     <string name="ai_vision_assistant">एआई दृष्टि सहायक</string>
+    <string name="ai_vision_assistant_caps">एआई दृष्टि सहायक</string>
+    <string name="what_do_you_want_to_do">आप क्या करना चाहते हैं?</string>
+    <string name="tap_and_speak_command">बोलने के लिए टैप करें</string>
     <string name="currency_detection">मुद्रा पहचान</string>
+    <string name="recognize_currency">मुद्रा\nपहचानें</string>
     <string name="pick_from_gallery">गैलरी से चुनें</string>
     <string name="face_recognition">चेहरा पहचान</string>
     <string name="register_face">चेहरा पंजीकृत करें</string>
     <string name="manage_registered_faces">पंजीकृत चेहरे प्रबंधित करें</string>
+    <string name="manage_faces">चेहरे\nप्रबंधित करें</string>
+    <string name="card_detect_objects">वस्तु\nपहचानें</string>
+    <string name="card_recognize_currency">मुद्रा\nपहचानें</string>
+    <string name="card_read_text_ocr">टेक्स्ट पढ़ें\n(OCR)</string>
+    <string name="card_detect_color">रंग\nपहचानें</string>
+    <string name="card_register_face">चेहरा\nपंजीकृत करें</string>
+    <string name="card_manage_faces">चेहरे\nप्रबंधित करें</string>
     <string name="detect_objects">वस्तु पहचानें</string>
     <string name="detect_color">रंग पहचानें</string>
     <string name="voice_command">वॉइस कमांड</string>
     <string name="read_text_ocr">टेक्स्ट पढ़ें (OCR)</string>
     <string name="ocr_result">OCR परिणाम</string>
     <string name="detection_result">पहचान परिणाम</string>
+    <string name="result_title">परिणाम</string>
+    <string name="detection_result_placeholder">पहचान परिणाम यहाँ दिखाई देगा।</string>
+    <string name="btn_capture_image">फोटो खींचें</string>
+    <string name="btn_pick_gallery">गैलरी से चुनें</string>
+    <string name="btn_connect_caps">कनेक्ट करें</string>
+    <string name="btn_auto_caps">ऑटो</string>
+    <string name="btn_manual_caps">मैनुअल</string>
+    <string name="status_offline_dot">• ऑफलाइन</string>
+    <string name="status_online_dot">• ऑनलाइन</string>
+    <string name="status_manual_dropdown">मैनुअल ▾</string>
+    <string name="status_auto_dropdown">ऑटो ▾</string>
 
     <!-- MainActivity Dynamic Messages -->
     <string name="msg_unable_to_load_image">छवि लोड करने में असमर्थ</string>

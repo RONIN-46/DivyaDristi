@@ -111,6 +111,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var ocrResultText: TextView
     private lateinit var statusText: TextView
     private lateinit var currencyToggleButton: Switch
+    private lateinit var recognizeCurrencyButton: Button
     private lateinit var tts: TextToSpeech
     private lateinit var yoloInterpreter: Interpreter
     private lateinit var placesInterpreter: Interpreter
@@ -241,15 +242,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         registerFaceButton = findViewById(R.id.registerFaceButton)
         manageFacesButton = findViewById(R.id.manageFacesButton)
         currencyToggleButton = findViewById(R.id.currencyToggleButton)
+        recognizeCurrencyButton = findViewById(R.id.recognizeCurrencyButton)
         connectionStatus = findViewById(R.id.connectionStatus)
         modeStatus = findViewById(R.id.modeStatus)
         voiceButton = findViewById(R.id.voiceButton)
         speechManager = SpeechManager(this, this)
         intentClassifier = IntentClassifier()
         featureRouter = FeatureRouter()
-//        statusIndicator = findViewById(R.id.statusIndicator)
-//        cameraStatusIndicator = findViewById(R.id.cameraStatusIndicator)
-//        cameraStatusText = findViewById(R.id.cameraStatusText)
+        statusIndicator = findViewById(R.id.statusIndicator)
+        cameraStatusIndicator = findViewById(R.id.cameraStatusIndicator)
+        cameraStatusText = findViewById(R.id.cameraStatusText)
         intervalEditText = findViewById(R.id.intervalEditText)
         autoModeSettingsCard = findViewById(R.id.autoModeSettingsCard)
         languageButton = findViewById(R.id.languageButton)
@@ -375,6 +377,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         pickButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
             imagePickerLauncher.launch("image/*")
+        }
+
+        recognizeCurrencyButton.setOnClickListener {
+            val bitmap = (imageView.drawable as? BitmapDrawable)?.bitmap
+            if (bitmap == null) {
+                speakAndToast(getString(R.string.msg_please_capture_or_select_image))
+            } else {
+                thread {
+                    runOnUiThread { statusText.text = getString(R.string.msg_processing) }
+                    val currencyResult = detectCurrency(bitmap)
+                    val text = if (currencyResult.isNotEmpty()) currencyResult else getString(R.string.msg_no_currency_detected)
+                    presentResult(text)
+                }
+            }
+        }
+
+        findViewById<View>(R.id.voiceCard)?.setOnClickListener {
+            speechManager.startListening()
         }
 
         registerFaceButton.setOnClickListener {
@@ -564,6 +584,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
         updateUIForMode()
+        updateFeatureCardsLanguage()
     }
 
 
@@ -1191,12 +1212,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     private fun updateUIForMode() {
-        modeToggleButton.text = if (isAutoMode) getString(R.string.manual) else getString(R.string.auto)
-        modeStatus.text = if (isAutoMode) getString(R.string.auto) else getString(R.string.manual)
+        modeToggleButton.text = if (isAutoMode) getString(R.string.btn_manual_caps) else getString(R.string.btn_auto_caps)
+        modeStatus.text = if (isAutoMode) getString(R.string.status_auto_dropdown) else getString(R.string.status_manual_dropdown)
         modeStatus.setTextColor(
             ContextCompat.getColor(
                 this,
-                if (isAutoMode) android.R.color.holo_blue_light else android.R.color.holo_orange_light
+                R.color.brand_primary
             )
         )
         captureButton.isEnabled = !isAutoMode
@@ -1707,6 +1728,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
         updateTTSLanguage(language)
 
+        updateFeatureCardsLanguage(language)
+
         if (language == LanguageManager.HINDI) {
 
             translationManager.prepareHindi(
@@ -1734,6 +1757,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         speechManager.setLanguage(language)
 
 
+    }
+
+    private fun updateFeatureCardsLanguage(language: String? = null) {
+        val hindi = if (language != null) language == LanguageManager.HINDI else isHindi()
+        runOnUiThread {
+            findViewById<TextView>(R.id.detectObjectsText)?.text =
+                if (hindi) "वस्तु\nपहचानें" else "Detect\nObjects"
+            findViewById<TextView>(R.id.recognizeCurrencyText)?.text =
+                if (hindi) "मुद्रा\nपहचानें" else "Recognize\nCurrency"
+            findViewById<TextView>(R.id.readTextOcrText)?.text =
+                if (hindi) "टेक्स्ट पढ़ें\n(OCR)" else "Read Text\n(OCR)"
+            findViewById<TextView>(R.id.detectColorText)?.text =
+                if (hindi) "रंग\nपहचानें" else "Detect\nColor"
+            findViewById<TextView>(R.id.registerFaceText)?.text =
+                if (hindi) "चेहरा\nपंजीकृत करें" else "Register\nFace"
+            findViewById<TextView>(R.id.manageFacesText)?.text =
+                if (hindi) "चेहरे\nप्रबंधित करें" else "Manage\nFaces"
+        }
     }
 
     override fun onDestroy() {

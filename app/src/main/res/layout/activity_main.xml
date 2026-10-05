@@ -1,407 +1,989 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/background_gradient"
+    android:background="@color/bg_app"
+    android:fillViewport="true"
     tools:context=".MainActivity">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp">
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="24dp">
 
-        <!-- Header -->
-        <TextView
-            android:id="@+id/headerTitle"
-            android:layout_width="wrap_content"
+        <!-- ======================================================== -->
+        <!-- HEADER: App Title & Language Toggle                      -->
+        <!-- ======================================================== -->
+        <RelativeLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textColor="@android:color/white"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:layout_marginBottom="14dp">
 
-        <TextView
-            android:id="@+id/headerSubtitle"
-            android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/headerTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Divya"
+                        android:textColor="@color/text_navy"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Drishti"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/headerSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:letterSpacing="0.06"
+                    android:text="@string/ai_vision_assistant_caps"
+                    android:textColor="@color/brand_primary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Language Toggle Pill Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/languageButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:backgroundTint="@color/card_white"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/language_toggle_label"
+                android:textColor="@color/brand_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                app:cornerRadius="18dp"
+                app:icon="@drawable/ic_translate"
+                app:iconGravity="textStart"
+                app:iconPadding="6dp"
+                app:iconSize="16dp"
+                app:iconTint="@color/brand_primary"
+                app:strokeColor="@color/brand_primary_border"
+                app:strokeWidth="1dp" />
+        </RelativeLayout>
+
+        <!-- ======================================================== -->
+        <!-- ROW 1: Connection & Mode Cards                           -->
+        <!-- ======================================================== -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/ai_vision_assistant"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="14sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/headerTitle" />
+            android:orientation="horizontal">
 
-        <!-- Connection and Mode Section -->
-        <GridLayout
-            android:id="@+id/connectionModeLayout"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:columnCount="2"
-            android:rowCount="1"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/headerSubtitle">
-
-            <androidx.cardview.widget.CardView
+            <!-- Connection Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/connectionCard"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_columnWeight="1"
-                android:layout_marginEnd="8dp"
-                app:cardBackgroundColor="#B31E1E1E"
-                app:cardCornerRadius="8dp">
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_border"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="12dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/connection"
-                        android:textColor="@android:color/white" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <TextView
-                        android:id="@+id/connectionStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/offline"
-                        android:textColor="@android:color/holo_red_light"
-                        android:textStyle="bold" />
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_badge_light_blue">
 
-                    <Button
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/connection"
+                                android:src="@drawable/ic_wifi"
+                                app:tint="@color/brand_primary" />
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/connection"
+                                android:textColor="@color/text_slate"
+                                android:textSize="12sp" />
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <View
+                                    android:id="@+id/statusIndicator"
+                                    android:layout_width="7dp"
+                                    android:layout_height="7dp"
+                                    android:layout_marginEnd="4dp"
+                                    android:background="@drawable/status_dot_offline" />
+
+                                <TextView
+                                    android:id="@+id/connectionStatus"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/offline"
+                                    android:textColor="@color/text_navy"
+                                    android:textSize="13sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/connectButton"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:backgroundTint="@android:color/holo_blue_light"
-                        android:text="@string/connect"
-                        android:textColor="@android:color/white" />
-
-                    <Button
-                        android:id="@+id/languageButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/switch_to_hindi" />
+                        android:layout_height="38dp"
+                        android:layout_marginTop="12dp"
+                        android:backgroundTint="@color/brand_primary"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/btn_connect_caps"
+                        android:textColor="@color/white"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="10dp"
+                        app:elevation="0dp" />
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
-            <androidx.cardview.widget.CardView
+            <!-- Mode Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/modeCard"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_columnWeight="1"
-                android:layout_marginStart="8dp"
-                app:cardBackgroundColor="#B31E1E1E"
-                app:cardCornerRadius="8dp">
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_border"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="12dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/mode"
-                        android:textColor="@android:color/white" />
-
-                    <TextView
-                        android:id="@+id/modeStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/manual"
-                        android:textColor="@android:color/holo_orange_light"
-                        android:textStyle="bold" />
-
-                    <Button
-                        android:id="@+id/modeToggleButton"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:backgroundTint="@android:color/holo_blue_dark"
-                        android:text="@string/auto"
-                        android:textColor="@android:color/white" />
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-        </GridLayout>
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-        <!-- Auto Mode Settings -->
-        <androidx.cardview.widget.CardView
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_badge_light_blue">
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/mode"
+                                android:src="@drawable/ic_signal"
+                                app:tint="@color/brand_primary" />
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/mode"
+                                android:textColor="@color/text_slate"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/modeStatus"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/status_manual_dropdown"
+                                android:textColor="@color/brand_primary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/modeToggleButton"
+                        style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="38dp"
+                        android:layout_marginTop="12dp"
+                        android:backgroundTint="@color/brand_primary_light"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/btn_auto_caps"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="10dp"
+                        app:elevation="0dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Hidden / Collapsible Auto Mode Interval Settings -->
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/autoModeSettingsCard"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#B31E1E1E"
-            app:cardCornerRadius="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/connectionModeLayout"
-            android:visibility="gone">
+            android:layout_marginTop="8dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="@color/card_white"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/card_border"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/auto_mode_interval"
-                    android:textColor="@android:color/white" />
+                    android:textColor="@color/text_navy"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
 
                 <EditText
                     android:id="@+id/intervalEditText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:backgroundTint="@android:color/white"
-                    android:hint="Default: 30"
+                    android:layout_marginTop="4dp"
+                    android:hint="@string/default_30"
                     android:inputType="number"
-                    android:textColor="@android:color/white"
-                    android:textColorHint="@android:color/darker_gray" />
+                    android:textColor="@color/text_navy"
+                    android:textColorHint="@color/text_muted"
+                    android:textSize="14sp" />
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
-        <!-- Currency Model Section -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/currencyCard"
-            android:layout_width="0dp"
+        <!-- ======================================================== -->
+        <!-- ROW 2: Voice Command Banner                              -->
+        <!-- ======================================================== -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/voiceCard"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#B31E1E1E"
-            app:cardCornerRadius="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/autoModeSettingsCard">
+            android:layout_marginTop="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="@color/card_white"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/card_border"
+            app:strokeWidth="1dp">
 
-            <LinearLayout
+            <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="16dp">
+                android:padding="12dp">
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/currency_detection"
-                    android:textColor="@android:color/white" />
+                <!-- Circular Blue Voice Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/voiceButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:backgroundTint="@color/brand_primary"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp"
+                    android:padding="0dp"
+                    app:cornerRadius="22dp"
+                    app:elevation="0dp"
+                    app:icon="@drawable/ic_mic"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="22dp"
+                    app:iconTint="@color/white" />
 
-                <Switch
-                    android:id="@+id/currencyToggleButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- System Status -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/systemStatusCard"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#B31E1E1E"
-            app:cardCornerRadius="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/currencyCard">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:id="@+id/statusText"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/system_idle"
-                    android:textColor="@android:color/white" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_toStartOf="@id/voiceChevron"
+                    android:layout_toEndOf="@id/voiceButton"
+                    android:orientation="vertical">
 
-        <!-- Camera Feed Section -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cameraFeedCard"
-            android:layout_width="0dp"
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/what_do_you_want_to_do"
+                        android:textColor="@color/text_navy"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/tap_and_speak_command"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/voiceChevron"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/brand_primary_border" />
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ======================================================== -->
+        <!-- ROW 3: Camera Viewfinder Card                            -->
+        <!-- ======================================================== -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cameraCard"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#B31E1E1E"
-            app:cardCornerRadius="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/systemStatusCard">
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="@color/viewfinder_bg"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp">
 
-            <LinearLayout
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_height="220dp">
 
+                <!-- The Actual ESP32 / Gallery Camera Image -->
                 <ImageView
                     android:id="@+id/imageView"
                     android:layout_width="match_parent"
-                    android:layout_height="200dp"
-                    android:layout_marginTop="16dp"
-                    android:background="@color/cardview_dark_background"
-                    android:scaleType="centerCrop"
-                    android:contentDescription="ESP32 Camera Feed" />
+                    android:layout_height="match_parent"
+                    android:contentDescription="@string/esp32_camera_feed"
+                    android:scaleType="centerCrop" />
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-                <Button
-                    android:id="@+id/captureButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:backgroundTint="@android:color/holo_blue_bright"
-                    android:text="@string/capture_image"
-                    android:textColor="@android:color/white" />
-
-                <Button
-                    android:id="@+id/pickButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:backgroundTint="@android:color/holo_purple"
-                    android:text="@string/pick_from_gallery"
-                    android:textColor="@android:color/white" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Face Recognition Management Section -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/faceManagementCard"
-            android:layout_width="0dp"
+        <!-- ======================================================== -->
+        <!-- ROW 4: Action Buttons (CAPTURE IMAGE & PICK GALLERY)     -->
+        <!-- ======================================================== -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#B31E1E1E"
-            app:cardCornerRadius="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/cameraFeedCard">
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
 
-            <LinearLayout
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/captureButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/brand_primary"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/btn_capture_image"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="12dp"
+                app:elevation="0dp"
+                app:icon="@drawable/ic_camera"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconSize="20dp"
+                app:iconTint="@color/white" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pickButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/brand_primary_light"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/btn_pick_gallery"
+                android:textColor="@color/brand_primary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/ic_gallery"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconSize="20dp"
+                app:iconTint="@color/brand_primary"
+                app:strokeColor="@color/brand_primary_border"
+                app:strokeWidth="1dp" />
+        </LinearLayout>
+
+        <!-- ======================================================== -->
+        <!-- ROW 5: 3x2 Grid Feature Cards                            -->
+        <!-- ======================================================== -->
+
+        <!-- Grid Row 1: Detect Objects, Recognize Currency, Read Text (OCR) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <!-- Card 1: Detect Objects -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/detectObjectsCard"
+                android:layout_width="0dp"
+                android:layout_height="104dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_white"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_border"
+                app:strokeWidth="1dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_badge_light_blue">
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/detect_objects"
+                                android:src="@drawable/ic_cube"
+                                app:tint="@color/brand_primary" />
+                        </FrameLayout>
+
+                        <TextView
+                            android:id="@+id/detectObjectsText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:gravity="center"
+                            android:lineSpacingExtra="1dp"
+                            android:text="@string/card_detect_objects"
+                            android:textColor="@color/text_navy"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Transparent Clickable Button overlay -->
+                    <Button
+                        android:id="@+id/detectButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="@string/detect_objects" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 2: Recognize Currency -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/recognizeCurrencyCard"
+                android:layout_width="0dp"
+                android:layout_height="104dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_white"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_border"
+                app:strokeWidth="1dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_badge_light_blue">
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/recognize_currency"
+                                android:src="@drawable/ic_rupee"
+                                app:tint="@color/brand_primary" />
+                        </FrameLayout>
+
+                        <TextView
+                            android:id="@+id/recognizeCurrencyText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:gravity="center"
+                            android:lineSpacingExtra="1dp"
+                            android:text="@string/card_recognize_currency"
+                            android:textColor="@color/text_navy"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/recognizeCurrencyButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="@string/currency_detection" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 3: Read Text (OCR) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/ocrCard"
+                android:layout_width="0dp"
+                android:layout_height="104dp"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_white"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_border"
+                app:strokeWidth="1dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_badge_light_blue">
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/read_text_ocr"
+                                android:src="@drawable/ic_text_ocr"
+                                app:tint="@color/brand_primary" />
+                        </FrameLayout>
+
+                        <TextView
+                            android:id="@+id/readTextOcrText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:gravity="center"
+                            android:lineSpacingExtra="1dp"
+                            android:text="@string/card_read_text_ocr"
+                            android:textColor="@color/text_navy"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/ocrButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="@string/read_text_ocr" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Grid Row 2: Detect Color, Register Face, Manage Faces -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <!-- Card 4: Detect Color -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/detectColorCard"
+                android:layout_width="0dp"
+                android:layout_height="104dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_white"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_border"
+                app:strokeWidth="1dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_badge_light_blue">
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/detect_color"
+                                android:src="@drawable/ic_palette"
+                                app:tint="@color/brand_primary" />
+                        </FrameLayout>
+
+                        <TextView
+                            android:id="@+id/detectColorText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:gravity="center"
+                            android:lineSpacingExtra="1dp"
+                            android:text="@string/card_detect_color"
+                            android:textColor="@color/text_navy"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/detectColorButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="@string/detect_color" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 5: Register Face -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/registerFaceCard"
+                android:layout_width="0dp"
+                android:layout_height="104dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_white"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_border"
+                app:strokeWidth="1dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_badge_light_blue">
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/register_face"
+                                android:src="@drawable/ic_face_scan"
+                                app:tint="@color/brand_primary" />
+                        </FrameLayout>
+
+                        <TextView
+                            android:id="@+id/registerFaceText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:gravity="center"
+                            android:lineSpacingExtra="1dp"
+                            android:text="@string/card_register_face"
+                            android:textColor="@color/text_navy"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/registerFaceButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="@string/register_face" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Card 6: Manage Faces -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/manageFacesCard"
+                android:layout_width="0dp"
+                android:layout_height="104dp"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/card_white"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_border"
+                app:strokeWidth="1dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_badge_light_blue">
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/manage_registered_faces"
+                                android:src="@drawable/ic_users"
+                                app:tint="@color/brand_primary" />
+                        </FrameLayout>
+
+                        <TextView
+                            android:id="@+id/manageFacesText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:gravity="center"
+                            android:lineSpacingExtra="1dp"
+                            android:text="@string/card_manage_faces"
+                            android:textColor="@color/text_navy"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/manageFacesButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="@string/manage_registered_faces" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- ======================================================== -->
+        <!-- ROW 6: Result Card                                       -->
+        <!-- ======================================================== -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/resultCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/card_white"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/card_border"
+            app:strokeWidth="1dp">
+
+            <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="14dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/face_recognition"
-                    android:textColor="@android:color/white"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                <FrameLayout
+                    android:id="@+id/resultIconBadge"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:background="@drawable/bg_badge_light_blue">
 
-                <Button
-                    android:id="@+id/registerFaceButton"
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/detection_result"
+                        android:src="@drawable/ic_document"
+                        app:tint="@color/brand_primary" />
+                </FrameLayout>
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:backgroundTint="@android:color/holo_orange_dark"
-                    android:text="@string/register_face"
-                    android:textColor="@android:color/white" />
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_toStartOf="@id/resultChevron"
+                    android:layout_toEndOf="@id/resultIconBadge"
+                    android:orientation="vertical">
 
-                <Button
-                    android:id="@+id/manageFacesButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:backgroundTint="@android:color/holo_red_dark"
-                    android:text="@string/manage_registered_faces"
-                    android:textColor="@android:color/white" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/result_title"
+                        android:textColor="@color/text_navy"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
 
-            </LinearLayout>
+                    <TextView
+                        android:id="@+id/resultText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/detection_result_placeholder"
+                        android:textColor="@color/text_slate"
+                        android:textSize="12sp" />
+                </LinearLayout>
 
-        </androidx.cardview.widget.CardView>
+                <ImageView
+                    android:id="@+id/resultChevron"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/brand_primary_border" />
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-        <!-- Object Detection Section -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/objectDetectionCard"
-            android:layout_width="0dp"
+        <!-- ======================================================== -->
+        <!-- Hidden / Compatibility Views Required by MainActivity     -->
+        <!-- ======================================================== -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#B31E1E1E"
-            app:cardCornerRadius="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/faceManagementCard">
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:text="@string/system_idle"
+            android:textColor="@color/text_slate"
+            android:textSize="11sp"
+            android:visibility="gone" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+        <TextView
+            android:id="@+id/ocrResultText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
 
-                <Button
-                    android:id="@+id/detectButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:backgroundTint="@android:color/holo_green_dark"
-                    android:text="@string/detect_objects"
-                    android:textColor="@android:color/white" />
+        <TextView
+            android:id="@+id/debugText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
 
-                <Button
-                    android:id="@+id/detectColorButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:backgroundTint="@android:color/holo_blue_dark"
-                    android:text="@string/detect_color"
-                    android:textColor="@android:color/white" />
+        <Switch
+            android:id="@+id/currencyToggleButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
 
-                <Button
-                    android:id="@+id/voiceButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/voice_command"/>
+        <View
+            android:id="@+id/cameraStatusIndicator"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
 
-                <Button
-                    android:id="@+id/ocrButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:backgroundTint="@android:color/holo_blue_dark"
-                    android:text="@string/read_text_ocr"
-                    android:textColor="@android:color/white" />
+        <TextView
+            android:id="@+id/cameraStatusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
 
-                <TextView
-                    android:id="@+id/ocrResultText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:padding="8dp"
-                    android:text="@string/ocr_result"
-                    android:textColor="@android:color/white" />
-
-                <TextView
-                    android:id="@+id/resultText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:padding="8dp"
-                    android:text="@string/detection_result"
-                    android:textColor="@android:color/white"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/debugText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:textColor="@android:color/darker_gray"
-                    android:visibility="gone" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</ScrollView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
