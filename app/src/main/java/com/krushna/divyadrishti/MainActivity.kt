@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.net.wifi.WifiConfiguration
@@ -148,6 +149,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private val esp32SSID = "ESP32_CAM_AP"
     private val esp32Password = "12345678"
     private val esp32CaptureURL = "http://$esp32IP/capture"
+    // Image rotation angle in degrees for ESP32-CAM when mounted horizontally
+    private val esp32ImageRotationDegrees = 90f
 
     private var isAutoMode = false
     private val handler = Handler(Looper.getMainLooper())
@@ -871,24 +874,34 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                 if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                     val inputStream: InputStream = connection.inputStream
-                    val bitmap = BitmapFactory.decodeStream(inputStream)
-                    val processedBitmap = ImagePreprocessor().process(bitmap)
+                    val rawBitmap = BitmapFactory.decodeStream(inputStream)
                     inputStream.close()
+
+                    if (rawBitmap == null) {
+                        runOnUiThread {
+                            statusText.text = getString(R.string.msg_capture_error, "Failed to decode image")
+                        }
+                        return@thread
+                    }
+
+                    // Rotate image 90 degrees because ESP32-CAM is mounted horizontally
+                    val rotatedBitmap = rotateBitmap(rawBitmap, esp32ImageRotationDegrees)
+
                     runOnUiThread {
 
                         selectedImageUri = null
                         ocrResultText.text = ""
-                        // Save the original captured image
-                        originalBitmap = bitmap
+                        // Save the captured image (rotated for horizontal ESP32-CAM mount)
+                        originalBitmap = rotatedBitmap
 
-                        // Display ONLY the original image
+                        // Display the rotated image
                         imageView.setImageBitmap(originalBitmap)
 
                         statusText.text =
                             if (isAutoMode) getString(R.string.msg_auto_mode_image_captured)
                             else getString(R.string.msg_manual_capture_successful)
 
-                        // Send the original image for processing
+                        // Send the rotated image for processing
                         processAndSpeak(originalBitmap)
                     }
 
@@ -902,6 +915,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 runOnUiThread { statusText.text = getString(R.string.msg_capture_error, e.message ?: "") }
             }
         }
+    }
+
+    private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
+        if (degrees == 0f) return bitmap
+        val matrix = Matrix().apply { postRotate(degrees) }
+        val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (rotated != bitmap) {
+            bitmap.recycle()
+        }
+        return rotated
     }
 
     private fun processAndSpeak(bitmap: Bitmap) {
