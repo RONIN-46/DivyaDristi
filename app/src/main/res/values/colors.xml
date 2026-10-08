@@ -3,4 +3,28 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <color name="primary_dark">#212121</color> <color name="primary_variant_dark">#303030</color> <color name="accent_teal">#00BCD4</color> <color name="text_primary_dark">#FFFFFFFF</color> <color name="text_secondary_dark">#B3FFFFFF</color> </resources>
+    <color name="bg_app">#F5F7FB</color>
+    <color name="card_white">#FFFFFFFF</color>
+    <color name="card_border">#E2E8F0</color>
+
+    <color name="brand_primary">#2563EB</color>
+    <color name="brand_primary_dark">#1D4ED8</color>
+    <color name="brand_primary_light">#EFF6FF</color>
+    <color name="brand_primary_border">#DBEAFE</color>
+
+    <color name="text_navy">#0F172A</color>
+    <color name="text_slate">#64748B</color>
+    <color name="text_muted">#94A3B8</color>
+
+    <color name="status_offline">#F87171</color>
+    <color name="status_online">#22C55E</color>
+
+    <color name="viewfinder_bg">#0F172A</color>
+
+    <!-- Legacy compatibility colors -->
+    <color name="primary_dark">#F5F7FB</color>
+    <color name="primary_variant_dark">#FFFFFF</color>
+    <color name="accent_teal">#2563EB</color>
+    <color name="text_primary_dark">#0F172A</color>
+    <color name="text_secondary_dark">#64748B</color>
+</resources>

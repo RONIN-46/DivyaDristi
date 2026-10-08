@@ -2,16 +2,17 @@
     <style name="Theme.Divyadrishti" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
 
-        <item name="colorPrimary">@color/accent_teal</item>
-        <item name="colorPrimaryVariant">@color/accent_teal</item>
-        <item name="colorOnPrimary">@color/black</item>
-        <item name="colorSecondary">@color/accent_teal</item>
-        <item name="colorSecondaryVariant">@color/accent_teal</item>
-        <item name="colorOnSecondary">@color/black</item>
-        <item name="android:statusBarColor">@color/primary_dark</item>
-        <item name="android:windowBackground">@color/primary_dark</item>
-        <item name="colorSurface">@color/primary_variant_dark</item>
-        <item name="android:textColor">@color/text_primary_dark</item>
-        <item name="android:textColorHint">@color/text_secondary_dark</item>
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/brand_primary</item>
+        <item name="colorSecondaryVariant">@color/brand_primary_dark</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:statusBarColor">@color/bg_app</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowBackground">@color/bg_app</item>
+        <item name="colorSurface">@color/card_white</item>
+        <item name="android:textColor">@color/text_navy</item>
+        <item name="android:textColorHint">@color/text_slate</item>
     </style>
 </resources>

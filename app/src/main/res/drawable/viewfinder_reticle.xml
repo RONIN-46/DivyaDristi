@@ -1,0 +1,43 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="150dp"
+    android:viewportWidth="200"
+    android:viewportHeight="150">
+    <!-- Top-Left Bracket -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M80,48H72c-2.2,0 -4,1.8 -4,4v8" />
+    <!-- Top-Right Bracket -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M120,48h8c2.2,0 4,1.8 4,4v8" />
+    <!-- Bottom-Left Bracket -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M80,102H72c-2.2,0 -4,-1.8 -4,-4V90" />
+    <!-- Bottom-Right Bracket -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M120,102h8c2.2,0 4,-1.8 4,-4V90" />
+    <!-- Center Dot -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M100,75m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
+    <!-- Subtle bounding box silhouette on the left -->
+    <path
+        android:strokeColor="#26FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M24,70H90V130H24Z" />
+</vector>

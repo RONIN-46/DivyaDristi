@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Big T -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M3,5h8v2.5H8.5V19h-3V7.5H3V5z"/>
+    <!-- Small T -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M13,8h8v2.5h-2.5V19h-3V10.5H13V8z"/>
+</vector>
