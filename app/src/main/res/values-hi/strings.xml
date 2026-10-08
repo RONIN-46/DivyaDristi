@@ -27,6 +27,7 @@
     <!-- Currency -->
     <string name="currency_icon">करेंसी आइकन</string>
     <string name="currency_model">करेंसी मॉडल</string>
+    <string name="currency_model_desc">भारतीय नोटों की पहचान सक्षम करें</string>
 
     <!-- System Status -->
     <string name="system_status">सिस्टम स्थिति</string>

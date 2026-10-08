@@ -110,7 +110,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private lateinit var manageFacesButton: Button
     private lateinit var ocrResultText: TextView
     private lateinit var statusText: TextView
-    private lateinit var currencyToggleButton: Switch
+    private lateinit var currencyToggleButton: androidx.appcompat.widget.SwitchCompat
     private lateinit var recognizeCurrencyButton: Button
     private lateinit var tts: TextToSpeech
     private lateinit var yoloInterpreter: Interpreter
@@ -353,8 +353,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             val message =
                 if (isChecked) getString(R.string.msg_currency_detection_enabled)
                 else getString(R.string.msg_currency_detection_disabled)
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            speakAndToast(message)
             statusText.text = message
+            findViewById<TextView>(R.id.resultText)?.text = message
+        }
+
+        findViewById<View>(R.id.currencyCard)?.setOnClickListener {
+            currencyToggleButton.toggle()
         }
 
         autoCaptureRunnable = object : Runnable {
@@ -920,6 +925,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 // 1. Existing YOLO + Scene + HSV + Currency
                 // -----------------------------------------
                 val sceneCaption = processImage(bitmap)
+
+                if (isCurrencyDetectionEnabled) {
+                    runOnUiThread {
+                        presentResult(sceneCaption)
+                        statusText.text = getString(R.string.msg_processing_complete)
+                        detectButton.isEnabled = true
+                    }
+                    return@thread
+                }
 
                 // -----------------------------------------
                 // Results from OCR + Face
@@ -1774,6 +1788,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 if (hindi) "चेहरा\nपंजीकृत करें" else "Register\nFace"
             findViewById<TextView>(R.id.manageFacesText)?.text =
                 if (hindi) "चेहरे\nप्रबंधित करें" else "Manage\nFaces"
+            findViewById<TextView>(R.id.currencyTitleText)?.text =
+                if (hindi) "करेंसी मॉडल" else "Currency Model"
+            findViewById<TextView>(R.id.currencySubtitleText)?.text =
+                if (hindi) "भारतीय नोटों की पहचान सक्षम करें" else "Toggle Indian Rupee note recognition"
         }
     }
 
