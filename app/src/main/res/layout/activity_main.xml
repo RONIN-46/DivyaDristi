@@ -321,6 +321,82 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- ======================================================== -->
+        <!-- Currency Model Card (Toggle Switch)                      -->
+        <!-- ======================================================== -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/currencyCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="@color/card_white"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/card_border"
+            app:strokeWidth="1dp">
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp">
+
+                <FrameLayout
+                    android:id="@+id/currencyIconBadge"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:background="@drawable/bg_badge_light_blue">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/currency_icon"
+                        android:src="@drawable/ic_rupee"
+                        app:tint="@color/brand_primary" />
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_toStartOf="@id/currencyToggleButton"
+                    android:layout_toEndOf="@id/currencyIconBadge"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/currencyTitleText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/currency_model"
+                        android:textColor="@color/text_navy"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/currencySubtitleText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/currency_model_desc"
+                        android:textColor="@color/text_slate"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/currencyToggleButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true" />
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ======================================================== -->
         <!-- ROW 2: Voice Command Banner                              -->
         <!-- ======================================================== -->
         <com.google.android.material.card.MaterialCardView
@@ -964,12 +1040,6 @@
         <TextView
             android:id="@+id/debugText"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
-
-        <Switch
-            android:id="@+id/currencyToggleButton"
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:visibility="gone" />
 

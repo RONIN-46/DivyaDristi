@@ -27,6 +27,7 @@
     <!-- Currency -->
     <string name="currency_icon">Currency Icon</string>
     <string name="currency_model">Currency Model</string>
+    <string name="currency_model_desc">Toggle Indian Rupee note recognition</string>
 
     <!-- System Status -->
     <string name="system_status">System Status</string>
