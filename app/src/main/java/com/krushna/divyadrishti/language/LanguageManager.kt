@@ -9,22 +9,28 @@ object LanguageManager {
     const val ENGLISH = "en"
     const val HINDI = "hi"
 
+    private var currentLang: String? = null
+
     fun setLanguage(language: String) {
-
+        currentLang = language
         val locales = LocaleListCompat.forLanguageTags(language)
-
         AppCompatDelegate.setApplicationLocales(locales)
     }
 
     fun getLanguage(context: Context): String {
+        currentLang?.let { return it }
 
         val locales = AppCompatDelegate.getApplicationLocales()
 
         if (!locales.isEmpty) {
-            return locales[0]?.language ?: ENGLISH
+            val lang = locales[0]?.language ?: ENGLISH
+            currentLang = lang
+            return lang
         }
 
-        return context.resources.configuration.locales[0].language
+        val lang = context.resources.configuration.locales[0].language
+        currentLang = lang
+        return lang
     }
 
     fun isHindi(context: Context): Boolean {
