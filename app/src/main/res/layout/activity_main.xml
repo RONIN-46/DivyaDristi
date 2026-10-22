@@ -148,6 +148,7 @@
                             android:orientation="vertical">
 
                             <TextView
+                                android:id="@+id/connectionTitleText"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/connection"
@@ -243,6 +244,7 @@
                             android:orientation="vertical">
 
                             <TextView
+                                android:id="@+id/modeTitleText"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/mode"
@@ -449,6 +451,7 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:id="@+id/voiceCardTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/what_do_you_want_to_do"
@@ -457,6 +460,7 @@
                         android:textStyle="bold" />
 
                     <TextView
+                        android:id="@+id/voiceCardSubtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
@@ -988,6 +992,7 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:id="@+id/resultTitleText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/result_title"

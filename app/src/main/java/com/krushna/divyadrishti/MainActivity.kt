@@ -17,6 +17,7 @@ import android.speech.tts.TextToSpeech
 import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
+import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
@@ -153,6 +154,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private val esp32ImageRotationDegrees = 90f
 
     private var isAutoMode = false
+    private var isESP32Connected = false
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var autoCaptureRunnable: Runnable
     private var autoCaptureInterval = 30000L // Default 30 seconds
@@ -226,8 +228,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         setContentView(R.layout.activity_main)
 
         llmManager = LLMManager(this)
-        llmManager.initialize()
-        Log.d("MAIN", "Initializing LLM")
+        thread {
+            llmManager.initialize()
+            Log.d("MAIN", "LLM initialized in background")
+        }
         ocrManager = OCRManager()
         // Initialize UI components
         imageView = findViewById(R.id.imageView)
@@ -820,7 +824,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     private fun connectToESP32WiFi() {
-        statusText.text = getString(R.string.msg_connecting_esp32)
+        val hindi = isHindi()
+        statusText.text = if (hindi) "ESP32 से कनेक्ट हो रहा है..." else "Connecting to ESP32..."
         thread {
             try {
                 val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
@@ -836,33 +841,45 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
                 Thread.sleep(5000)
 
-                runOnUiThread {
-                    statusText.text = getString(R.string.msg_connected_esp32)
-                    connectionStatus.text = getString(R.string.online)
-                    connectionStatus.setTextColor(
-                        ContextCompat.getColor(
-                            this,
-                            android.R.color.holo_green_light
-                        )
-                    )
-                    cameraStatusText.text = getString(R.string.connected)
-                    statusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
-                    cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
-                }
+                isESP32Connected = true
+                updateConnectionStatusUI()
             } catch (e: Exception) {
-                runOnUiThread {
-                    statusText.text = getString(R.string.msg_connection_failed, e.message ?: "")
-                    connectionStatus.text = getString(R.string.offline)
-                    connectionStatus.setTextColor(
-                        ContextCompat.getColor(
-                            this,
-                            android.R.color.holo_red_light
-                        )
-                    )
-                    cameraStatusText.text = getString(R.string.disconnected)
-                    statusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
-                    cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
-                }
+                isESP32Connected = false
+                updateConnectionStatusUI(failedError = e.message ?: "")
+            }
+        }
+    }
+
+    private fun updateConnectionStatusUI(failedError: String? = null) {
+        val hindi = isHindi()
+        runOnUiThread {
+            if (failedError != null) {
+                statusText.text = if (hindi) "कनेक्शन विफल: $failedError" else "Connection failed: $failedError"
+                connectionStatus.text = if (hindi) "ऑफलाइन" else "Offline"
+                connectionStatus.setTextColor(
+                    ContextCompat.getColor(this, android.R.color.holo_red_light)
+                )
+                cameraStatusText.text = if (hindi) "कनेक्ट नहीं है" else "Disconnected"
+                statusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
+                cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
+            } else if (isESP32Connected) {
+                statusText.text = if (hindi) "ESP32-CAM से कनेक्ट हो गया" else "Connected to ESP32-CAM"
+                connectionStatus.text = if (hindi) "ऑनलाइन" else "Online"
+                connectionStatus.setTextColor(
+                    ContextCompat.getColor(this, android.R.color.holo_green_light)
+                )
+                cameraStatusText.text = if (hindi) "कनेक्ट है" else "Connected"
+                statusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
+                cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
+            } else {
+                statusText.text = if (hindi) "सिस्टम चालू है" else "System idle"
+                connectionStatus.text = if (hindi) "ऑफलाइन" else "Offline"
+                connectionStatus.setTextColor(
+                    ContextCompat.getColor(this, R.color.text_navy)
+                )
+                cameraStatusText.text = if (hindi) "कनेक्ट नहीं है" else "Disconnected"
+                statusIndicator.setBackgroundResource(R.drawable.status_dot_offline)
+                cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
             }
         }
     }
@@ -1249,8 +1266,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     private fun updateUIForMode() {
-        modeToggleButton.text = if (isAutoMode) getString(R.string.btn_manual_caps) else getString(R.string.btn_auto_caps)
-        modeStatus.text = if (isAutoMode) getString(R.string.status_auto_dropdown) else getString(R.string.status_manual_dropdown)
+        val hindi = isHindi()
+        modeToggleButton.text = if (isAutoMode) (if (hindi) "मैनुअल" else "MANUAL") else (if (hindi) "ऑटो" else "AUTO")
+        modeStatus.text = if (isAutoMode) (if (hindi) "ऑटो ▾" else "Auto ▾") else (if (hindi) "मैनुअल ▾" else "Manual ▾")
         modeStatus.setTextColor(
             ContextCompat.getColor(
                 this,
@@ -1258,7 +1276,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             )
         )
         captureButton.isEnabled = !isAutoMode
-        statusText.text = if (isAutoMode) getString(R.string.msg_auto_mode_active) else getString(R.string.msg_manual_mode_active)
+        statusText.text = if (isAutoMode) (if (hindi) "ऑटो मोड सक्रिय" else "Auto mode active") else (if (hindi) "मैनुअल मोड सक्रिय" else "Manual mode active")
         autoModeSettingsCard.visibility = if (isAutoMode) View.VISIBLE else View.GONE
     }
 
@@ -1767,33 +1785,31 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
         updateFeatureCardsLanguage(language)
 
+        val announcement = if (language == LanguageManager.HINDI) {
+            "हिंदी भाषा चुनी गई"
+        } else {
+            "Language changed to English"
+        }
+        speakAndToast(announcement)
+
         if (language == LanguageManager.HINDI) {
 
             translationManager.prepareHindi(
                 onReady = {
-                    runOnUiThread {
-                        Toast.makeText(
-                            this,
-                            getString(R.string.msg_hindi_translation_ready),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    Log.d("TRANSLATION", "Hindi translation model ready")
                 },
                 onError = {
-                    runOnUiThread {
-                        Toast.makeText(
-                            this,
-                            getString(R.string.msg_hindi_translation_failed),
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    Log.e("TRANSLATION", "Hindi translation model failed", it)
                 }
             )
         }
 
         speechManager.setLanguage(language)
+    }
 
-
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        updateFeatureCardsLanguage()
     }
 
     private fun updateFeatureCardsLanguage(language: String? = null) {
@@ -1815,6 +1831,53 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 if (hindi) "करेंसी मॉडल" else "Currency Model"
             findViewById<TextView>(R.id.currencySubtitleText)?.text =
                 if (hindi) "भारतीय नोटों की पहचान सक्षम करें" else "Toggle Indian Rupee note recognition"
+
+            // Titles for Connection, Mode, Voice, and Result
+            findViewById<TextView>(R.id.connectionTitleText)?.text =
+                if (hindi) "कनेक्शन" else "Connection"
+            findViewById<TextView>(R.id.modeTitleText)?.text =
+                if (hindi) "मोड" else "Mode"
+            findViewById<TextView>(R.id.voiceCardTitle)?.text =
+                if (hindi) "आप क्या करना चाहते हैं?" else "What do you want to do?"
+            findViewById<TextView>(R.id.voiceCardSubtitle)?.text =
+                if (hindi) "बोलने के लिए टैप करें" else "Tap to speak command"
+            findViewById<TextView>(R.id.resultTitleText)?.text =
+                if (hindi) "परिणाम" else "Result"
+
+            // Result placeholder
+            if (::resultText.isInitialized) {
+                val currentResult = resultText.text.toString()
+                if (currentResult == "Detection result will appear here." ||
+                    currentResult == "Detection results will appear here." ||
+                    currentResult == "पहचान परिणाम यहाँ दिखाई देगा।" ||
+                    currentResult.isBlank()
+                ) {
+                    resultText.text = if (hindi) "पहचान परिणाम यहाँ दिखाई देगा।" else "Detection result will appear here."
+                }
+            }
+
+            findViewById<TextView>(R.id.headerSubtitle)?.text =
+                if (hindi) "एआई दृष्टि सहायक" else "AI VISION ASSISTANT"
+            if (::captureButton.isInitialized) {
+                captureButton.text = if (hindi) "फोटो लें" else "Capture Image"
+            }
+            if (::pickButton.isInitialized) {
+                pickButton.text = if (hindi) "गैलरी से चुनें" else "Pick from Gallery"
+            }
+            if (::connectButton.isInitialized) {
+                connectButton.text = if (hindi) "कनेक्ट करें" else "CONNECT"
+            }
+            if (::modeToggleButton.isInitialized) {
+                modeToggleButton.text = if (isAutoMode) (if (hindi) "मैनुअल" else "MANUAL") else (if (hindi) "ऑटो" else "AUTO")
+            }
+            if (::modeStatus.isInitialized) {
+                modeStatus.text = if (isAutoMode) (if (hindi) "ऑटो ▾" else "Auto ▾") else (if (hindi) "मैनुअल ▾" else "Manual ▾")
+            }
+            if (::languageButton.isInitialized) {
+                languageButton.text = if (hindi) "English" else "हिंदी"
+            }
+
+            updateConnectionStatusUI()
         }
     }
 
