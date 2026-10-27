@@ -6,10 +6,15 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
-import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
+import java.net.InetSocketAddress
+import java.net.Socket
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -823,29 +828,123 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         }
     }
 
+    private fun bindToWifiNetwork(): Boolean {
+        val connectivityManager = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val wifiNetwork = connectivityManager.allNetworks.firstOrNull { network ->
+            val caps = connectivityManager.getNetworkCapabilities(network)
+            caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        }
+        if (wifiNetwork != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                connectivityManager.bindProcessToNetwork(wifiNetwork)
+            } else {
+                @Suppress("DEPRECATION")
+                ConnectivityManager.setProcessDefaultNetwork(wifiNetwork)
+            }
+            return true
+        }
+        return false
+    }
+
+    private fun unbindWifiNetwork() {
+        val connectivityManager = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            connectivityManager.bindProcessToNetwork(null)
+        } else {
+            @Suppress("DEPRECATION")
+            ConnectivityManager.setProcessDefaultNetwork(null)
+        }
+    }
+
+    private fun checkESP32Reachable(timeoutMs: Int = 2500): Boolean {
+        // 1. Try TCP Socket connection on port 80
+        try {
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress(esp32IP, 80), timeoutMs)
+                return true
+            }
+        } catch (_: Exception) {
+        }
+
+        // 2. Fallback HTTP GET to capture URL
+        try {
+            val url = URL(esp32CaptureURL)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.connectTimeout = timeoutMs
+            connection.readTimeout = timeoutMs
+            connection.requestMethod = "GET"
+            connection.connect()
+            val code = connection.responseCode
+            connection.disconnect()
+            if (code in 200..399) {
+                return true
+            }
+        } catch (_: Exception) {
+        }
+
+        // 3. Fallback HTTP GET to root URL
+        try {
+            val url = URL("http://$esp32IP/")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.connectTimeout = timeoutMs
+            connection.readTimeout = timeoutMs
+            connection.requestMethod = "GET"
+            connection.connect()
+            val code = connection.responseCode
+            connection.disconnect()
+            if (code in 200..399) {
+                return true
+            }
+        } catch (_: Exception) {
+        }
+
+        return false
+    }
+
     private fun connectToESP32WiFi() {
         val hindi = isHindi()
-        statusText.text = if (hindi) "ESP32 से कनेक्ट हो रहा है..." else "Connecting to ESP32..."
+        statusText.text = if (hindi) "ESP32-CAM की जांच हो रही है..." else "Checking ESP32-CAM..."
+        connectButton.isEnabled = false
+
         thread {
             try {
-                val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-                val wifiConfig = WifiConfiguration().apply {
-                    SSID = "\"$esp32SSID\""
-                    preSharedKey = "\"$esp32Password\""
+                // Bind networking to Wi-Fi so ESP32-CAM (192.168.4.1) is reachable even when mobile data is on
+                val boundToWifi = bindToWifiNetwork()
+
+                // Check whether ESP32-CAM is connected and responding
+                val reachable = checkESP32Reachable()
+
+                if (reachable) {
+                    isESP32Connected = true
+                    updateConnectionStatusUI()
+
+                    val successMsg = if (hindi) "ESP32-CAM ऑनलाइन है और कनेक्ट हो गया" else "ESP32-CAM is online and connected"
+                    speakAndToast(successMsg)
+
+                    // Capture an initial frame so all camera features immediately have the current image
+                    captureImageFromESP32()
+                } else {
+                    isESP32Connected = false
+                    unbindWifiNetwork()
+                    updateConnectionStatusUI()
+
+                    val offlineMsg = if (hindi) {
+                        if (boundToWifi) "ESP32-CAM ऑफलाइन है। कृपया जांचें कि ESP32 चालू है।"
+                        else "ESP32-CAM ऑफलाइन है। कृपया फोन को Wi-Fi ($esp32SSID) से कनेक्ट करें।"
+                    } else {
+                        if (boundToWifi) "ESP32-CAM is offline. Please check if ESP32 is powered on."
+                        else "ESP32-CAM is offline. Please connect phone to Wi-Fi ($esp32SSID)."
+                    }
+                    speakAndToast(offlineMsg)
                 }
-
-                val netId = wifiManager.addNetwork(wifiConfig)
-                wifiManager.disconnect()
-                wifiManager.enableNetwork(netId, true)
-                wifiManager.reconnect()
-
-                Thread.sleep(5000)
-
-                isESP32Connected = true
-                updateConnectionStatusUI()
             } catch (e: Exception) {
                 isESP32Connected = false
+                unbindWifiNetwork()
                 updateConnectionStatusUI(failedError = e.message ?: "")
+            } finally {
+                runOnUiThread {
+                    connectButton.isEnabled = true
+                }
             }
         }
     }
@@ -860,7 +959,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     ContextCompat.getColor(this, android.R.color.holo_red_light)
                 )
                 cameraStatusText.text = if (hindi) "कनेक्ट नहीं है" else "Disconnected"
-                statusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
+                statusIndicator.setBackgroundResource(R.drawable.status_dot_offline)
                 cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_offline)
             } else if (isESP32Connected) {
                 statusText.text = if (hindi) "ESP32-CAM से कनेक्ट हो गया" else "Connected to ESP32-CAM"
@@ -869,13 +968,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     ContextCompat.getColor(this, android.R.color.holo_green_light)
                 )
                 cameraStatusText.text = if (hindi) "कनेक्ट है" else "Connected"
-                statusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
+                statusIndicator.setBackgroundResource(R.drawable.status_dot_online)
                 cameraStatusIndicator.setBackgroundResource(R.drawable.status_indicator_online)
             } else {
-                statusText.text = if (hindi) "सिस्टम चालू है" else "System idle"
+                statusText.text = if (hindi) "ESP32-CAM ऑफलाइन है" else "ESP32-CAM is offline"
                 connectionStatus.text = if (hindi) "ऑफलाइन" else "Offline"
                 connectionStatus.setTextColor(
-                    ContextCompat.getColor(this, R.color.text_navy)
+                    ContextCompat.getColor(this, android.R.color.holo_red_light)
                 )
                 cameraStatusText.text = if (hindi) "कनेक्ट नहीं है" else "Disconnected"
                 statusIndicator.setBackgroundResource(R.drawable.status_dot_offline)
@@ -885,9 +984,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     private fun captureImageFromESP32() {
-        statusText.text = getString(R.string.msg_capturing_image)
+        runOnUiThread {
+            statusText.text = getString(R.string.msg_capturing_image)
+        }
         thread {
             try {
+                bindToWifiNetwork()
                 val url = URL(esp32CaptureURL)
                 val connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 10000
@@ -934,7 +1036,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 }
                 connection.disconnect()
             } catch (e: Exception) {
-                runOnUiThread { statusText.text = getString(R.string.msg_capture_error, e.message ?: "") }
+                runOnUiThread {
+                    statusText.text = getString(R.string.msg_capture_error, e.message ?: "")
+                    if (isESP32Connected) {
+                        isESP32Connected = false
+                        updateConnectionStatusUI()
+                    }
+                }
             }
         }
     }
