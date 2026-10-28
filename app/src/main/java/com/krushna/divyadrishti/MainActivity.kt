@@ -903,7 +903,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
     private fun connectToESP32WiFi() {
         val hindi = isHindi()
-        statusText.text = if (hindi) "ESP32-CAM की जांच हो रही है..." else "Checking ESP32-CAM..."
+        statusText.text = if (hindi) "डिवाइस की जांच हो रही है..." else "Checking Device is online..."
         connectButton.isEnabled = false
 
         thread {
@@ -918,7 +918,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     isESP32Connected = true
                     updateConnectionStatusUI()
 
-                    val successMsg = if (hindi) "ESP32-CAM ऑनलाइन है और कनेक्ट हो गया" else "ESP32-CAM is online and connected"
+                    val successMsg = if (hindi) "डिवाइस ऑनलाइन है और कनेक्ट हो गया" else "Device is online and connected"
                     speakAndToast(successMsg)
 
                     // Capture an initial frame so all camera features immediately have the current image
@@ -929,11 +929,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     updateConnectionStatusUI()
 
                     val offlineMsg = if (hindi) {
-                        if (boundToWifi) "ESP32-CAM ऑफलाइन है। कृपया जांचें कि ESP32 चालू है।"
-                        else "ESP32-CAM ऑफलाइन है। कृपया फोन को Wi-Fi ($esp32SSID) से कनेक्ट करें।"
+                        if (boundToWifi) "डिवाइस ऑफलाइन है। कृपया जांचें कि डिवाइस चालू है।"
+                        else "डिवाइस ऑफलाइन है। कृपया फोन को Wi-Fi ($esp32SSID) से कनेक्ट करें।"
                     } else {
-                        if (boundToWifi) "ESP32-CAM is offline. Please check if ESP32 is powered on."
-                        else "ESP32-CAM is offline. Please connect phone to Wi-Fi ($esp32SSID)."
+                        if (boundToWifi) "Device is offline. Please check if device is powered on."
+                        else "Device is offline. Please connect phone to Wi-Fi ($esp32SSID)."
                     }
                     speakAndToast(offlineMsg)
                 }
@@ -1732,6 +1732,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
 
     private fun summarizeEntities(detections: List<ObjectInfo>): String {
 
+        val personCount = detections.count { it.label.equals("person", ignoreCase = true) }
+        val hasFewPersons = personCount > 2
+
+        val nonPersonDetections = if (hasFewPersons) {
+            detections.filterNot { it.label.equals("person", ignoreCase = true) }
+        } else {
+            detections
+        }
+
         fun formatRegion(objects: List<ObjectInfo>): String {
             if (objects.isEmpty()) return ""
 
@@ -1741,7 +1750,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 .groupingBy { it }
                 .eachCount()
                 .map { (label, count) ->
-                    if (count == 1) "a $label" else "$count ${label}s"
+                    if (label.equals("person", ignoreCase = true) && count > 2) {
+                        "few person"
+                    } else if (count == 1) {
+                        "a $label"
+                    } else {
+                        "$count ${label}s"
+                    }
                 }
 
             return when {
@@ -1751,31 +1766,38 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
 
-        val leftObjects = detections.filter { it.xCenterNorm < 0.33f }
-        val centerObjects = detections.filter { it.xCenterNorm in 0.33f..0.67f }
-        val rightObjects = detections.filter { it.xCenterNorm > 0.67f }
+        val leftObjects = nonPersonDetections.filter { it.xCenterNorm < 0.33f }
+        val centerObjects = nonPersonDetections.filter { it.xCenterNorm in 0.33f..0.67f }
+        val rightObjects = nonPersonDetections.filter { it.xCenterNorm > 0.67f }
 
         val left = formatRegion(leftObjects)
         val center = formatRegion(centerObjects)
         val right = formatRegion(rightObjects)
 
-        val parts = mutableListOf<String>()
+        val otherParts = mutableListOf<String>()
 
         if (left.isNotEmpty()) {
-            parts.add("To your left, I see $left")
+            otherParts.add("To your left, I see $left")
         }
         if (center.isNotEmpty()) {
-            parts.add("In front of you, there is $center")
+            otherParts.add("In front of you, there is $center")
         }
         if (right.isNotEmpty()) {
-            parts.add("To your right, I see $right")
+            otherParts.add("To your right, I see $right")
         }
 
-        if (parts.isEmpty()) {
-            return ""
+        val otherSummary = if (otherParts.isNotEmpty()) {
+            otherParts.joinToString(", ") + "."
+        } else {
+            ""
         }
 
-        return parts.joinToString(", ") + "."
+        return when {
+            hasFewPersons && otherSummary.isNotEmpty() -> "There are few person. $otherSummary"
+            hasFewPersons -> "There are few person."
+            otherSummary.isNotEmpty() -> otherSummary
+            else -> ""
+        }
     }
 
     private fun getObjectPosition(xCenter: Float): String {
