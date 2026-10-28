@@ -2,6 +2,8 @@ package com.krushna.divyadrishti.color
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import kotlin.math.max
+import kotlin.math.min
 
 object ColorDetector {
 
@@ -15,16 +17,37 @@ object ColorDetector {
     fun detectDominantColor(bitmap: Bitmap): String = analyze(bitmap).name
 
     fun analyze(bitmap: Bitmap): ColorResult {
-        val counts = supportedColors.associateWith { 0 }.toMutableMap()
         val startX = (bitmap.width * 0.15f).toInt()
         val endX = (bitmap.width * 0.85f).toInt()
         val startY = (bitmap.height * 0.15f).toInt()
         val endY = (bitmap.height * 0.85f).toInt()
-        val hsv = FloatArray(3)
+        return analyzeArea(bitmap, startX, startY, endX - startX, endY - startY)
+    }
 
-        for (x in startX until endX step 4) {
-            for (y in startY until endY step 4) {
-                Color.colorToHSV(bitmap.getPixel(x, y), hsv)
+    /**
+     * Fast area color analysis using batch getPixels() instead of individual JNI getPixel() calls.
+     */
+    fun analyzeArea(bitmap: Bitmap, startX: Int, startY: Int, width: Int, height: Int): ColorResult {
+        if (width <= 0 || height <= 0 || bitmap.isRecycled) return ColorResult("Unknown", 0)
+
+        val safeStartX = startX.coerceIn(0, bitmap.width - 1)
+        val safeStartY = startY.coerceIn(0, bitmap.height - 1)
+        val safeWidth = min(width, bitmap.width - safeStartX)
+        val safeHeight = min(height, bitmap.height - safeStartY)
+
+        if (safeWidth <= 0 || safeHeight <= 0) return ColorResult("Unknown", 0)
+
+        val pixels = IntArray(safeWidth * safeHeight)
+        bitmap.getPixels(pixels, 0, safeWidth, safeStartX, safeStartY, safeWidth, safeHeight)
+
+        val counts = supportedColors.associateWith { 0 }.toMutableMap()
+        val hsv = FloatArray(3)
+        val step = max(2, min(safeWidth, safeHeight) / 20)
+
+        for (y in 0 until safeHeight step step) {
+            val rowOffset = y * safeWidth
+            for (x in 0 until safeWidth step step) {
+                Color.colorToHSV(pixels[rowOffset + x], hsv)
                 val (h, s, v) = hsv
                 val color = when {
                     v < 0.18f -> "Black"
@@ -54,3 +77,4 @@ object ColorDetector {
         }
     }
 }
+

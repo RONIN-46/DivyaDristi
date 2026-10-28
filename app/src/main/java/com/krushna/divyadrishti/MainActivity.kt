@@ -151,6 +151,35 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     private val currencyInputSize = 640
     private val currencyConfidenceThreshold = 0.35f
 
+    // Reusable buffers to eliminate frame-by-frame GC allocations
+    private val inferenceLock = Any()
+
+    private val yoloInputSize = 640
+    private val yoloByteBuffer: ByteBuffer by lazy {
+        ByteBuffer.allocateDirect(1 * yoloInputSize * yoloInputSize * 3 * 4).apply {
+            order(ByteOrder.nativeOrder())
+        }
+    }
+    private val yoloIntValues by lazy { IntArray(yoloInputSize * yoloInputSize) }
+    private val yoloOutput by lazy { Array(1) { Array(84) { FloatArray(8400) } } }
+
+    private val placesInputSize = 224
+    private val placesByteBuffer: ByteBuffer by lazy {
+        ByteBuffer.allocateDirect(1 * placesInputSize * placesInputSize * 3 * 4).apply {
+            order(ByteOrder.nativeOrder())
+        }
+    }
+    private val placesIntValues by lazy { IntArray(placesInputSize * placesInputSize) }
+    private val placesOutput by lazy { Array(1) { FloatArray(365) } }
+
+    private val currencyByteBuffer: ByteBuffer by lazy {
+        ByteBuffer.allocateDirect(1 * currencyInputSize * currencyInputSize * 3 * 4).apply {
+            order(ByteOrder.nativeOrder())
+        }
+    }
+    private val currencyIntValues by lazy { IntArray(currencyInputSize * currencyInputSize) }
+    private val currencyOutput by lazy { Array(1) { Array(11) { FloatArray(8400) } } }
+
     private val esp32IP = "192.168.4.1"
     private val esp32SSID = "ESP32_CAM_AP"
     private val esp32Password = "12345678"
@@ -549,23 +578,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             }
         }
 
-        try {
-            Log.d("MODEL", "Before getModelPath")
-
-            val modelPath = ModelManager.getModelPath(this)
-
-            Log.d("MODEL", "Path = $modelPath")
-
-            val file = File(modelPath)
-
-            Log.d(
-                "MODEL",
-                "Exists=${file.exists()} Size=${file.length()}"
-            )
-        } catch (e: Exception) {
-            Log.e("MODEL", "ModelManager failed", e)
-        }
-
         ocrButton.setOnClickListener {
             val handleOcrResult: (String) -> Unit = { text ->
                 if (isValidOCRText(text)) {
@@ -802,9 +814,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                     debugText.visibility = View.VISIBLE
                     debugText.text = getString(R.string.msg_loading_models)
                 }
-                yoloInterpreter = Interpreter(loadModelFile("yolov8n_float32.tflite"))
-                placesInterpreter = Interpreter(loadModelFile("places365_float32.tflite"))
-                currencyInterpreter = Interpreter(loadModelFile("Currency_32.tflite"))
+                val interpreterOptions = Interpreter.Options().apply {
+                    setNumThreads(4)
+                }
+                synchronized(inferenceLock) {
+                    yoloInterpreter = Interpreter(loadModelFile("yolov8n_float32.tflite"), interpreterOptions)
+                    placesInterpreter = Interpreter(loadModelFile("places365_float32.tflite"), interpreterOptions)
+                    currencyInterpreter = Interpreter(loadModelFile("Currency_32.tflite"), interpreterOptions)
+                }
 
                 categories = assets.open("places365_labels.txt").bufferedReader().readLines()
                 labels = assets.open("yolo_labels.txt").bufferedReader().readLines().map {
@@ -1445,7 +1462,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
                 label = it.label,
                 confidence = 1.0f,
                 position = getObjectPosition(
-                    xCenter = it.xCenterNorm
+                    box = it.box
                 ),
                 color = ""
             )
@@ -1472,47 +1489,64 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         )
         return finalDescription
     }
+
     private fun detectCurrency(bitmap: Bitmap): String {
         try {
             val resized =
                 Bitmap.createScaledBitmap(bitmap, currencyInputSize, currencyInputSize, true)
-            val byteBuffer =
-                ByteBuffer.allocateDirect(1 * currencyInputSize * currencyInputSize * 3 * 4)
-                    .apply { order(ByteOrder.nativeOrder()) }
-            val intValues = IntArray(currencyInputSize * currencyInputSize)
-            resized.getPixels(intValues, 0, resized.width, 0, 0, resized.width, resized.height)
-            var pixel = 0
-            for (i in 0 until currencyInputSize) {
-                for (j in 0 until currencyInputSize) {
-                    val value = intValues[pixel++]
-                    byteBuffer.putFloat(((value shr 16) and 0xFF) / 255.0f)
-                    byteBuffer.putFloat(((value shr 8) and 0xFF) / 255.0f)
-                    byteBuffer.putFloat((value and 0xFF) / 255.0f)
+
+            synchronized(inferenceLock) {
+                if (!::currencyInterpreter.isInitialized) {
+                    Log.w("CURRENCY", "currencyInterpreter not initialized yet")
+                    if (resized != bitmap) resized.recycle()
+                    return ""
                 }
-            }
-            val output = Array(1) { Array(11) { FloatArray(8400) } }
-            currencyInterpreter.run(byteBuffer, output)
-            val currencyDetections = mutableListOf<Detection>()
-            for (i in 0 until 8400) {
-                val classScores = FloatArray(7) { c -> output[0][4 + c][i] }
-                val confidence = classScores.maxOrNull() ?: 0f
-                if (confidence > currencyConfidenceThreshold) {
-                    val classIndex = classScores.indexOfFirst { it == confidence }
-                    if (classIndex in currencyLabels.indices) {
-                        currencyDetections.add(
-                            Detection(
-                                BoundingBox(
-                                    output[0][0][i],
-                                    output[0][1][i],
-                                    output[0][2][i],
-                                    output[0][3][i]
-                                ), currencyLabels[classIndex], confidence
-                            )
-                        )
+                currencyByteBuffer.rewind()
+                resized.getPixels(currencyIntValues, 0, resized.width, 0, 0, resized.width, resized.height)
+                if (resized != bitmap) {
+                    resized.recycle()
+                }
+                var pixel = 0
+                for (i in 0 until currencyInputSize) {
+                    for (j in 0 until currencyInputSize) {
+                        val value = currencyIntValues[pixel++]
+                        currencyByteBuffer.putFloat(((value shr 16) and 0xFF) / 255.0f)
+                        currencyByteBuffer.putFloat(((value shr 8) and 0xFF) / 255.0f)
+                        currencyByteBuffer.putFloat((value and 0xFF) / 255.0f)
                     }
                 }
+                currencyInterpreter.run(currencyByteBuffer, currencyOutput)
             }
-            val finalDetections = nonMaxSuppression(currencyDetections, 0.5f)
+
+            val currencyDetections = mutableListOf<Detection>()
+            val numClasses = min(currencyLabels.size, 7)
+            for (i in 0 until 8400) {
+                var maxConfidence = 0f
+                var maxClassIndex = -1
+                for (c in 0 until numClasses) {
+                    val score = currencyOutput[0][4 + c][i]
+                    if (score > maxConfidence) {
+                        maxConfidence = score
+                        maxClassIndex = c
+                    }
+                }
+                if (maxConfidence > currencyConfidenceThreshold && maxClassIndex != -1) {
+                    currencyDetections.add(
+                        Detection(
+                            BoundingBox(
+                                currencyOutput[0][0][i],
+                                currencyOutput[0][1][i],
+                                currencyOutput[0][2][i],
+                                currencyOutput[0][3][i]
+                            ), currencyLabels[maxClassIndex], maxConfidence
+                        )
+                    )
+                }
+            }
+
+            val finalDetections = nonMaxSuppressionClassAgnostic(currencyDetections, 0.45f)
+            Log.d("CURRENCY", "Candidates: ${currencyDetections.size}, After NMS: ${finalDetections.size}")
+
             if (finalDetections.isNotEmpty()) {
                 val counts = finalDetections.groupingBy { it.label }.eachCount()
                 val detectedNotes = mutableListOf<String>()
@@ -1539,6 +1573,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             )
             return ""
         } catch (e: Exception) {
+            Log.e("CURRENCY", "detectCurrency error", e)
             ContextManager.updateCurrency(
                 CurrencyContext()
             )
@@ -1554,62 +1589,79 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     private fun predictScene(bitmap: Bitmap): Pair<String, Float> {
-        val inputSize = 224
-        val resized = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
-        val byteBuffer = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4)
-            .apply { order(ByteOrder.nativeOrder()) }
-        val intValues = IntArray(inputSize * inputSize)
-        resized.getPixels(intValues, 0, resized.width, 0, 0, resized.width, resized.height)
-        var pixel = 0
-        for (i in 0 until inputSize) {
-            for (j in 0 until inputSize) {
-                val v = intValues[pixel++]
-                byteBuffer.putFloat((((v shr 16 and 0xFF) / 255.0f - 0.485f) / 0.229f))
-                byteBuffer.putFloat((((v shr 8 and 0xFF) / 255.0f - 0.456f) / 0.224f))
-                byteBuffer.putFloat((((v and 0xFF) / 255.0f - 0.406f) / 0.225f))
+        val resized = Bitmap.createScaledBitmap(bitmap, placesInputSize, placesInputSize, true)
+        synchronized(inferenceLock) {
+            if (!::placesInterpreter.isInitialized) {
+                if (resized != bitmap) resized.recycle()
+                return Pair("Unknown", 0f)
             }
+            placesByteBuffer.rewind()
+            resized.getPixels(placesIntValues, 0, resized.width, 0, 0, resized.width, resized.height)
+            if (resized != bitmap) {
+                resized.recycle()
+            }
+            var pixel = 0
+            for (i in 0 until placesInputSize) {
+                for (j in 0 until placesInputSize) {
+                    val v = placesIntValues[pixel++]
+                    placesByteBuffer.putFloat((((v shr 16 and 0xFF) / 255.0f - 0.485f) / 0.229f))
+                    placesByteBuffer.putFloat((((v shr 8 and 0xFF) / 255.0f - 0.456f) / 0.224f))
+                    placesByteBuffer.putFloat((((v and 0xFF) / 255.0f - 0.406f) / 0.225f))
+                }
+            }
+            placesInterpreter.run(placesByteBuffer, placesOutput)
         }
-        val outputLogits = Array(1) { FloatArray(365) }
-        placesInterpreter.run(byteBuffer, outputLogits)
-        val probabilities = softmax(outputLogits[0])
+        val probabilities = softmax(placesOutput[0])
         val maxIdx = probabilities.indices.maxByOrNull { probabilities[it] } ?: 0
         return Pair(categories[maxIdx], probabilities[maxIdx])
     }
 
     private fun detectObjects(bitmap: Bitmap): List<ObjectInfo> {
-        val inputSize = 640
-        val resized = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
-        val byteBuffer = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4)
-            .apply { order(ByteOrder.nativeOrder()) }
-        val intValues = IntArray(inputSize * inputSize)
-        resized.getPixels(intValues, 0, resized.width, 0, 0, resized.width, resized.height)
-        var pixel = 0
-        for (i in 0 until inputSize) {
-            for (j in 0 until inputSize) {
-                val v = intValues[pixel++]
-                byteBuffer.putFloat(((v shr 16) and 0xFF) / 255.0f)
-                byteBuffer.putFloat(((v shr 8) and 0xFF) / 255.0f)
-                byteBuffer.putFloat((v and 0xFF) / 255.0f)
-            }
-        }
-        val output = Array(1) { Array(84) { FloatArray(8400) } }
-        yoloInterpreter.run(byteBuffer, output)
+        val resized = Bitmap.createScaledBitmap(bitmap, yoloInputSize, yoloInputSize, true)
         val detections = mutableListOf<Detection>()
-        for (i in 0 until 8400) {
-            val classScores = FloatArray(80) { c -> output[0][4 + c][i] }
-            val confidence = classScores.maxOrNull() ?: 0f
-            if (confidence > 0.25f) {
-                val classIndex = classScores.indexOfFirst { it == confidence }
-                detections.add(
-                    Detection(
-                        BoundingBox(
-                            output[0][0][i],
-                            output[0][1][i],
-                            output[0][2][i],
-                            output[0][3][i]
-                        ), labels[classIndex], confidence
+        synchronized(inferenceLock) {
+            if (!::yoloInterpreter.isInitialized) {
+                if (resized != bitmap) resized.recycle()
+                return emptyList()
+            }
+            yoloByteBuffer.rewind()
+            resized.getPixels(yoloIntValues, 0, resized.width, 0, 0, resized.width, resized.height)
+            if (resized != bitmap) {
+                resized.recycle()
+            }
+            var pixel = 0
+            for (i in 0 until yoloInputSize) {
+                for (j in 0 until yoloInputSize) {
+                    val v = yoloIntValues[pixel++]
+                    yoloByteBuffer.putFloat(((v shr 16) and 0xFF) / 255.0f)
+                    yoloByteBuffer.putFloat(((v shr 8) and 0xFF) / 255.0f)
+                    yoloByteBuffer.putFloat((v and 0xFF) / 255.0f)
+                }
+            }
+            yoloInterpreter.run(yoloByteBuffer, yoloOutput)
+            val numClasses = min(80, labels.size)
+            for (i in 0 until 8400) {
+                var maxConfidence = 0f
+                var maxClassIndex = -1
+                for (c in 0 until numClasses) {
+                    val score = yoloOutput[0][4 + c][i]
+                    if (score > maxConfidence) {
+                        maxConfidence = score
+                        maxClassIndex = c
+                    }
+                }
+                if (maxConfidence > 0.25f && maxClassIndex != -1) {
+                    detections.add(
+                        Detection(
+                            BoundingBox(
+                                yoloOutput[0][0][i],
+                                yoloOutput[0][1][i],
+                                yoloOutput[0][2][i],
+                                yoloOutput[0][3][i]
+                            ), labels[maxClassIndex], maxConfidence
+                        )
                     )
-                )
+                }
             }
         }
         return nonMaxSuppression(detections).map {
@@ -1621,40 +1673,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             )
         }
     }
+
     private fun cropObject(
         bitmap: Bitmap,
         box: BoundingBox
     ): Bitmap {
+        val left = ((box.x - box.w / 2f) * bitmap.width).toInt()
+        val top = ((box.y - box.h / 2f) * bitmap.height).toInt()
+        val right = ((box.x + box.w / 2f) * bitmap.width).toInt()
+        val bottom = ((box.y + box.h / 2f) * bitmap.height).toInt()
 
-        // YOLO BoundingBox:
-        // x, y = CENTER of object
-        // w, h = WIDTH and HEIGHT
-        // Values are normalized to 0..1
-
-        val left =
-            ((box.x - box.w / 2f) * bitmap.width).toInt()
-
-        val top =
-            ((box.y - box.h / 2f) * bitmap.height).toInt()
-
-        val right =
-            ((box.x + box.w / 2f) * bitmap.width).toInt()
-
-        val bottom =
-            ((box.y + box.h / 2f) * bitmap.height).toInt()
-
-        // Keep coordinates inside bitmap
-        val safeLeft =
-            left.coerceIn(0, bitmap.width - 1)
-
-        val safeTop =
-            top.coerceIn(0, bitmap.height - 1)
-
-        val safeRight =
-            right.coerceIn(safeLeft + 1, bitmap.width)
-
-        val safeBottom =
-            bottom.coerceIn(safeTop + 1, bitmap.height)
+        val safeLeft = left.coerceIn(0, bitmap.width - 1)
+        val safeTop = top.coerceIn(0, bitmap.height - 1)
+        val safeRight = right.coerceIn(safeLeft + 1, bitmap.width)
+        val safeBottom = bottom.coerceIn(safeTop + 1, bitmap.height)
 
         return Bitmap.createBitmap(
             bitmap,
@@ -1664,42 +1696,53 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             safeBottom - safeTop
         )
     }
+
     private fun detectColorsForObjects(
         bitmap: Bitmap,
         objects: List<ObjectInfo>
     ): Map<String, String> {
-
         val colors = mutableMapOf<String, String>()
 
         objects.forEach { obj ->
-
             try {
-                val croppedBitmap = cropObject(bitmap, obj.box)
+                val left = ((obj.box.x - obj.box.w / 2f) * bitmap.width).toInt()
+                val top = ((obj.box.y - obj.box.h / 2f) * bitmap.height).toInt()
+                val width = (obj.box.w * bitmap.width).toInt()
+                val height = (obj.box.h * bitmap.height).toInt()
 
-                val colorResult = ColorDetector.analyze(croppedBitmap)
-
+                val colorResult = ColorDetector.analyzeArea(bitmap, left, top, width, height)
                 val color = colorResult.name
-
                 colors[obj.label] = color
 
                 Log.d(
                     "COLOR_FEATURE",
                     "Object=${obj.label}, HSV Color=$color"
                 )
-
             } catch (e: Exception) {
-
                 Log.e(
                     "COLOR_FEATURE",
                     "Color detection failed for ${obj.label}",
                     e
                 )
-
                 colors[obj.label] = "Unknown"
             }
         }
 
         return colors
+    }
+
+    private fun nonMaxSuppressionClassAgnostic(
+        detections: List<Detection>,
+        iouThreshold: Float = 0.45f
+    ): List<Detection> {
+        val finalDetections = mutableListOf<Detection>()
+        var candidates = detections.sortedByDescending { it.confidence }
+        while (candidates.isNotEmpty()) {
+            val best = candidates.first()
+            finalDetections.add(best)
+            candidates = candidates.filter { calculateIoU(best.box, it.box) < iouThreshold }
+        }
+        return finalDetections
     }
 
     private fun nonMaxSuppression(
@@ -1728,10 +1771,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         return if (unionArea > 0) intersectionArea / unionArea else 0f
     }
 
-
-
     private fun summarizeEntities(detections: List<ObjectInfo>): String {
-
         val personCount = detections.count { it.label.equals("person", ignoreCase = true) }
         val hasFewPersons = personCount > 2
 
@@ -1770,8 +1810,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
         val centerObjects = nonPersonDetections.filter { it.xCenterNorm in 0.33f..0.67f }
         val rightObjects = nonPersonDetections.filter { it.xCenterNorm > 0.67f }
 
+        // Proximity check: Identify urgent obstacles right in front of the user (large bounding box in center)
+        val closeObstacle = centerObjects.firstOrNull {
+            val area = it.box.w * it.box.h
+            area > 0.20f || it.box.h > 0.50f
+        }
+
+        val cautionPrefix = if (closeObstacle != null) {
+            "Caution: A ${closeObstacle.label} is right in front of you, very close. "
+        } else {
+            ""
+        }
+
         val left = formatRegion(leftObjects)
-        val center = formatRegion(centerObjects)
+        val center = if (closeObstacle != null) {
+            formatRegion(centerObjects.filter { it != closeObstacle })
+        } else {
+            formatRegion(centerObjects)
+        }
         val right = formatRegion(rightObjects)
 
         val otherParts = mutableListOf<String>()
@@ -1780,7 +1836,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             otherParts.add("To your left, I see $left")
         }
         if (center.isNotEmpty()) {
-            otherParts.add("In front of you, there is $center")
+            otherParts.add(if (closeObstacle != null) "Also in front, there is $center" else "In front of you, there is $center")
         }
         if (right.isNotEmpty()) {
             otherParts.add("To your right, I see $right")
@@ -1792,12 +1848,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
             ""
         }
 
-        return when {
+        val bodySummary = when {
             hasFewPersons && otherSummary.isNotEmpty() -> "There are few person. $otherSummary"
             hasFewPersons -> "There are few person."
             otherSummary.isNotEmpty() -> otherSummary
             else -> ""
         }
+
+        return (cautionPrefix + bodySummary).trim()
+    }
+
+    private fun getObjectPosition(box: BoundingBox): String {
+        val hPos = when {
+            box.x < 0.33f -> "Left"
+            box.x < 0.67f -> "Center"
+            else -> "Right"
+        }
+        val area = box.w * box.h
+        val proximity = when {
+            area > 0.20f || box.h > 0.50f -> "Very Close"
+            area > 0.08f || box.h > 0.28f -> "Nearby"
+            else -> "Ahead"
+        }
+        return "$hPos ($proximity)"
     }
 
     private fun getObjectPosition(xCenter: Float): String {
@@ -2012,13 +2085,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener, VoiceComm
     }
 
     override fun onDestroy() {
-        speechManager.destroy()
+        if (::speechManager.isInitialized) {
+            speechManager.destroy()
+        }
 
-        tts.stop()
-        tts.shutdown()
-        yoloInterpreter.close()
-        placesInterpreter.close()
-        currencyInterpreter.close()
+        if (::tts.isInitialized) {
+            tts.stop()
+            tts.shutdown()
+        }
+        synchronized(inferenceLock) {
+            if (::yoloInterpreter.isInitialized) yoloInterpreter.close()
+            if (::placesInterpreter.isInitialized) placesInterpreter.close()
+            if (::currencyInterpreter.isInitialized) currencyInterpreter.close()
+        }
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
